@@ -2,6 +2,8 @@
 
 Given a series of images, attempt to find what websites the images came from and look up any available licensing information.
 
+Works with full or partial images
+
 ## Google Cloud Setup
 
 * [Create a Google Cloud project](https://console.cloud.google.com/projectcreate)
