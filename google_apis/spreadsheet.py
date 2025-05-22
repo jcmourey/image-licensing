@@ -33,7 +33,7 @@ def save_spreadsheet(dicts: list[dict], folder_id, spreadsheet_name):
 
 def convert_list_of_dicts(dicts: list[dict]):
     if not dicts:
-        return [], []
+        return [], [], []
 
     columns = list(dicts[0].keys())
     rows = [columns]
