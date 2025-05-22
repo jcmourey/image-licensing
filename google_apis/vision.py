@@ -9,7 +9,7 @@ def get_vision_client():
 
 vision_client = None
 
-def google_vision_search(blob) -> (str, str, str):
+def google_vision_search(blob):
     global vision_client
     if vision_client is None:
         vision_client = get_vision_client()
@@ -21,7 +21,7 @@ def google_vision_search(blob) -> (str, str, str):
     yield parse_vision_response(response)
 
 
-def google_batch_vision_search(blobs) -> (str, str, str):
+def google_batch_vision_search(blobs):
     global vision_client
     if vision_client is None:
         vision_client = get_vision_client()
@@ -63,7 +63,7 @@ def parse_vision_response(response):
         for match in visually_similar_images:
             yield match.url, "link to image", match.url, "visually similar"
 
-    for match in response.web_detection.pages_with_matching_images:
+    for match in matching_images:
         if len(match.full_matching_images) > 0:
             matching_image_url = match.full_matching_images[0].url
             matching_type = "full match"
