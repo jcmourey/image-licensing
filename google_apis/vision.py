@@ -1,6 +1,8 @@
 from google.cloud import vision
 from .credentials import get_creds
 from .storage import get_gcs_uri
+from urllib.parse import urlparse
+
 
 def get_vision_client():
     creds = get_creds()
@@ -8,6 +10,7 @@ def get_vision_client():
     return client
 
 vision_client = None
+
 
 def google_vision_search(blob):
     global vision_client
@@ -35,7 +38,7 @@ def google_batch_vision_search(blobs):
     return responses
 
 
-def batch_annotate_gcs_images(blobs, vision_client):
+def batch_annotate_gcs_images(blobs, client):
     # gcs_uris: list of up to 16 gs:// URIs
     requests = []
     for blob in blobs:
@@ -44,7 +47,7 @@ def batch_annotate_gcs_images(blobs, vision_client):
             'image': {'source': {'image_uri': uri}},
             'features': [{'type_': vision.Feature.Type.WEB_DETECTION, 'max_results': 3}]
         })
-    response = vision_client.batch_annotate_images(requests=requests)
+    response = client.batch_annotate_images(requests=requests)
     return response.responses  # List of responses, one per image
 
 
@@ -61,7 +64,7 @@ def parse_vision_response(response):
         if len(visually_similar_images) == 0 or not visually_similar_images:
             yield None, None, None, "none found"
         for match in visually_similar_images:
-            yield match.url, "link to image", match.url, "visually similar"
+            yield match.url, get_filename_from_url(match.url), match.url, "visually similar"
 
     for match in matching_images:
         if len(match.full_matching_images) > 0:
@@ -74,3 +77,10 @@ def parse_vision_response(response):
             continue
 
         yield match.url, match.page_title, matching_image_url, matching_type
+
+
+def get_filename_from_url(url):
+    parsed = urlparse(url)
+    path = parsed.path  # e.g., /02/81502-138-4F315F20/overview-eclipses-Sun-and-the-Moon.jpg
+    filename = path.split("/")[-1]
+    return filename

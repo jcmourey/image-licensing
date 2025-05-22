@@ -48,7 +48,7 @@ Create a `config.json` file in the project root
 
 ## Installs
 
-```brew install cask chromedriver```
+```brew install chromedriver```
 
 (needed to download license information from websites that protect against bots)
 

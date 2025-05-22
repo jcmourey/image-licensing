@@ -1,6 +1,7 @@
+import json
 import requests
 from bs4 import BeautifulSoup
-from google_apis.spreadsheet import insert_hyperlink
+from google_apis.sheet import insert_hyperlink
 
 
 def extract_page_license_metadata(page_url, debug=False):
@@ -12,6 +13,7 @@ def extract_page_license_metadata(page_url, debug=False):
     if page_url is None:
         return "none found"
 
+    # Adding a real user agent header helps websites accept the page download query
     headers = {
         "User-Agent": (
             "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
@@ -51,7 +53,7 @@ def extract_page_license_metadata(page_url, debug=False):
                 driver.get(page_url)
                 html = driver.page_source
                 driver.quit()
-                return parse_html_for_metadata(html)
+                return parse_html_for_metadata(html, debug=debug, page_url=page_url)
             except Exception as selenium_exc:
                 return f"Selenium failed: {selenium_exc}"
         else:
@@ -105,7 +107,8 @@ def parse_html_for_metadata(html, debug=False, page_url=None):
             data = json.loads(script.string)
             if isinstance(data, dict) and "license" in data:
                 meta_info["schema:license"] = data["license"]
-        except Exception:
+        except json.JSONDecodeError as error:
+            print("JSONDecodeError:", error, "decoding json_ld_tags for", page_url)
             continue
 
     # Visible text scan
@@ -148,7 +151,6 @@ def enrich_with_link(info_dict):
 
 if __name__ == "__main__":
     import argparse
-    import json
 
     parser = argparse.ArgumentParser(description="Extract license/copyright info from a web page's metadata.")
     parser.add_argument("page_url", help="The URL of the web page to analyze.")
