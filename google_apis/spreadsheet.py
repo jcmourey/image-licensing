@@ -31,7 +31,7 @@ def save_spreadsheet(dicts: list[dict], folder_id, spreadsheet_name):
     print(f"Google Sheet created at: {sheet_url}")
 
 
-def convert_list_of_dicts(dicts: list[dict]) -> (list[list[str]], list[int]):
+def convert_list_of_dicts(dicts: list[dict]):
     if not dicts:
         return [], []
 
