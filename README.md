@@ -1,3 +1,7 @@
+## Objective
+
+Given a series of images, attempt to find what websites the images came from and look up any available licensing information.
+
 ## Google Cloud Setup
 
 * [Create a Google Cloud project](https://console.cloud.google.com/projectcreate)
@@ -11,6 +15,7 @@
 	* Open the folder and make a note of the `GOOGLE_FOLDER_ID` displayed in the url: `https://drive.google.com/drive/folders/<GOOGLE_FOLDER_ID>`
 * [Create a Google Storage Bucket](https://console.cloud.google.com/storage/browser)
 	* Make a note of the `GOOGLE_BUCKET_NAME`
+	* Upload the images to the bucket
 	* Allow public access (needed for Google Sheets to be able to display the images)
 		* Stop public access prevention
 		* Grant viewing access to all users: add Principal 
