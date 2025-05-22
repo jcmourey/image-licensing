@@ -41,7 +41,7 @@ Create a `config.json` file in the project root
 
 ## Installs
 
-```brew install chromedriver```
+```brew install cask chromedriver```
 
 
 
