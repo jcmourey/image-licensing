@@ -18,6 +18,9 @@
 			* Assign roles: Storage Object Viewer
 * [Create Google Cloud credentials](https://console.cloud.google.com/apis/credentials)
 	* download credentials json file to the project root as: `credentials.json`
+* Install Chrome driver (needed to ger license information from sites that protect against bots)
+	
+```brew install chromedriver```
 
 ## Configuration File
 
