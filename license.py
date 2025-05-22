@@ -147,7 +147,7 @@ def enrich_with_link(info_dict):
     info_str = str(info_dict).replace("\\n", "").replace("\\t", "")
     for key, value in info_dict.items():
         if value.startswith("http"):
-            return insert_hyperlink(value, info_str)
+            return insert_hyperlink(value, info_str), None
     return info_str, None
 
 
