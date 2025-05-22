@@ -1,5 +1,5 @@
 import gspread
-from .drive import get_drive_service
+from .credentials import get_drive_service
 from .spreadsheet_resize import resize_sheet
 
 
