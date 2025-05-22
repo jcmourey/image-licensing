@@ -11,7 +11,7 @@ def extract_page_license_metadata(page_url, debug=False):
     If a 403 error is encountered, will retry using Selenium.
     """
     if page_url is None:
-        return "none found"
+        return None, "no license found"
 
     # Adding a real user agent header helps websites accept the page download query
     headers = {
@@ -55,11 +55,11 @@ def extract_page_license_metadata(page_url, debug=False):
                 driver.quit()
                 return parse_html_for_metadata(html, debug=debug, page_url=page_url)
             except Exception as selenium_exc:
-                return f"Selenium failed: {selenium_exc}"
+                return None, f"Selenium failed: {selenium_exc}"
         else:
-            return f"Could not fetch page: {http_err}"
+            return None, f"Could not fetch page: {http_err}"
     except Exception as e:
-        return f"Could not fetch page: {e}"
+        return None, f"Could not fetch page: {e}"
 
 
 def parse_html_for_metadata(html, debug=False, page_url=None):
@@ -142,11 +142,13 @@ def parse_html_for_metadata(html, debug=False, page_url=None):
 
 
 def enrich_with_link(info_dict):
-    info_str = str(info_dict).replace("\\n", "").replace("\\t", "") if info_dict else "none found"
+    if not info_dict:
+        return None, "no license found"
+    info_str = str(info_dict).replace("\\n", "").replace("\\t", "")
     for key, value in info_dict.items():
         if value.startswith("http"):
             return insert_hyperlink(value, info_str)
-    return info_str
+    return info_str, None
 
 
 if __name__ == "__main__":

@@ -12,19 +12,19 @@ def get_vision_client():
 vision_client = None
 
 
-def google_vision_search(blob):
+def google_vision_search(blob, max_results):
     global vision_client
     if vision_client is None:
         vision_client = get_vision_client()
     gcs_uri = get_gcs_uri(blob)
     response = vision_client.annotate_image({
         'image': {'source': {'image_uri': gcs_uri}},
-        'features': [{'type_': vision.Feature.Type.WEB_DETECTION, 'max_results': 3}]
+        'features': [{'type_': vision.Feature.Type.WEB_DETECTION, 'max_results': max_results}]
     })
     yield parse_vision_response(response)
 
 
-def google_batch_vision_search(blobs):
+def google_batch_vision_search(blobs, max_results):
     global vision_client
     if vision_client is None:
         vision_client = get_vision_client()
@@ -33,19 +33,19 @@ def google_batch_vision_search(blobs):
     blob_index = 1
     for batch in chunk_list(blobs, 16):
         print("Annotating blobs", blob_index, "to", blob_index + len(batch) - 1)
-        responses += batch_annotate_gcs_images(batch, vision_client)
+        responses += batch_annotate_gcs_images(batch, vision_client, max_results)
         blob_index += len(batch)
     return responses
 
 
-def batch_annotate_gcs_images(blobs, client):
+def batch_annotate_gcs_images(blobs, client, max_results):
     # gcs_uris: list of up to 16 gs:// URIs
     requests = []
     for blob in blobs:
         uri = get_gcs_uri(blob)
         requests.append({
             'image': {'source': {'image_uri': uri}},
-            'features': [{'type_': vision.Feature.Type.WEB_DETECTION, 'max_results': 3}]
+            'features': [{'type_': vision.Feature.Type.WEB_DETECTION, 'max_results': max_results}]
         })
     response = client.batch_annotate_images(requests=requests)
     return response.responses  # List of responses, one per image

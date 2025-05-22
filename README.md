@@ -42,6 +42,9 @@ Create a `config.json` file in the project root
       "bucket": "GOOGLE_BUCKET_NAME"
     },
     "project": "GOOGLE_PROJECT_ID"
+    "vision": {
+	  "max_results": 3
+	}
   }
 }
 ```

@@ -15,9 +15,10 @@ def main():
 
     bucket_name = google_cfg.get("storage", {}).get("bucket", "")
     project_name = google_cfg.get("project", "")
+    max_results = google_cfg.get("vision", "").get("max_results", 3)
 
     blobs = get_bucket_blobs(bucket_name, project_name)
-    responses = google_batch_vision_search(blobs)
+    responses = google_batch_vision_search(blobs, max_results)
 
     rows = []
     blob_number = 1
@@ -48,19 +49,49 @@ def make_row(blob_number, blob, response):
         column.IMAGE: insert_image(blob.public_url),
     }
 
-    match_index = 0
+    matches = []
     for page_url, title, image_url, matching_type in parse_vision_response(response):
-        match_index += 1
-        license_info = extract_page_license_metadata(page_url)
-        print("license info for", page_url, ":", license_info)
-        row[f"{column.MATCH} {match_index}"] = matching_type
-        row[f"{column.IMAGE} {match_index}"] = insert_image(image_url)
-        row[f"{column.LICENSE} {match_index}"] = license_info
-        row[f"{column.WEBSITE} {match_index}"] = insert_root_hyperlink(page_url)
-        row[f"{column.WEBPAGE} {match_index}"] = insert_hyperlink(page_url, title)
+        license_info, license_error = extract_page_license_metadata(page_url)
+        if license_info:
+            print("license info for", page_url, ":", license_info)
+        matches.append({
+            "page_url": page_url,
+            "title": title,
+            "image_url": image_url,
+            "matching_type": matching_type,
+            "license_info": license_info,
+            "license_error": license_error
+        })
+
+    matches_sorted = sorted(matches, key=sort_key)
+    for match_index, match in enumerate(matches_sorted):
+        fill_row(row, match_index + 1, match)
 
     row[column.NAME] = blob.name
     return row
+
+
+# Original list: matches = [(page_url, title, image_url, matching_type, license_info, license_error), ...]
+# This will sort so that:
+# - has_http==True comes first (not has_http==False)
+# - has_license==True comes next (not has_license==False)
+# - original order is preserved otherwise (Python sort is stable)
+def sort_key(match):
+    license_info = match["license_info"]
+    # 1. True if 'http' in license_info (license_info can be None)
+    has_http = bool(license_info and 'http' in license_info)
+    # 2. True if license_info is not None
+    has_license = license_info is not None
+    # 3. The index, for stable sorting (original order)
+    return not has_http, not has_license
+
+
+def fill_row(row, match_number, match):
+    row[f"{column.MATCH} {match_number}"] = match["matching_type"]
+    row[f"{column.IMAGE} {match_number}"] = insert_image(match["image_url"])
+    row[f"{column.LICENSE} {match_number}"] = match["license_info"] if match["license_info"] else match["license_error"]
+    row[f"{column.WEBSITE} {match_number}"] = insert_root_hyperlink(match["page_url"])
+    row[f"{column.WEBPAGE} {match_number}"] = insert_hyperlink(match["page_url"], match["title"])
 
 
 if __name__ == "__main__":
