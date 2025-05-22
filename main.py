@@ -8,10 +8,6 @@ from google_apis.storage import get_bucket_blobs
 # --- Configuration ---
 CONFIG_PATH = "config.json"
 
-# --- IMAGE TYPES ---
-IMAGE_FILE = "file"
-IMAGE_CLIPBOARD = "clipboard"
-
 def expand_path(path):
     return os.path.expanduser(path)
 
