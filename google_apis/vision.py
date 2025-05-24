@@ -1,54 +1,46 @@
 from google.cloud import vision
+from licensing.image import ImageMatch
 from .credentials import get_creds
-from .storage import get_gcs_uri
 from urllib.parse import urlparse
 
 
-def get_vision_client():
-    creds = get_creds()
-    client = vision.ImageAnnotatorClient(credentials=creds)
-    return client
+class Vision:
+    def __init__(self):
+        self.creds = get_creds()
+        self.client = vision.ImageAnnotatorClient(credentials=self.creds)
 
-vision_client = None
+    def batch_search(self, image_set, publish_method):
+        eligible_images = [image for image in image_set.images if image.is_eligible_to_get_more_matches]
+        # the maximum batch size for Google Vision batch annotation is 16
+        image_number = 1
+        for batch in chunk_list(eligible_images, 16):
+            print("Annotating images", image_number, "to", image_number + len(batch) - 1)
+            self.batch_annotate_gcs_images(batch, publish_method)
+            image_number += len(batch)
 
-
-def google_vision_search(blob, max_results):
-    global vision_client
-    if vision_client is None:
-        vision_client = get_vision_client()
-    gcs_uri = get_gcs_uri(blob)
-    response = vision_client.annotate_image({
-        'image': {'source': {'image_uri': gcs_uri}},
-        'features': [{'type_': vision.Feature.Type.WEB_DETECTION, 'max_results': max_results}]
-    })
-    yield parse_vision_response(response)
-
-
-def google_batch_vision_search(blobs, max_results):
-    global vision_client
-    if vision_client is None:
-        vision_client = get_vision_client()
-
-    responses = []
-    blob_index = 1
-    for batch in chunk_list(blobs, 16):
-        print("Annotating blobs", blob_index, "to", blob_index + len(batch) - 1)
-        responses += batch_annotate_gcs_images(batch, vision_client, max_results)
-        blob_index += len(batch)
-    return responses
+    def batch_annotate_gcs_images(self, images, publish_method):
+        requests = [make_request(image, image.match_limit) for image in images]
+        response = self.client.batch_annotate_images(requests=requests)
+        for image, response in zip(images, response.responses):
+            for match in image_matches(response):
+                image.add_match(match)
+                if image.has_enough:
+                    break
+            image.publish(publish_method)
 
 
-def batch_annotate_gcs_images(blobs, client, max_results):
-    # gcs_uris: list of up to 16 gs:// URIs
-    requests = []
-    for blob in blobs:
-        uri = get_gcs_uri(blob)
-        requests.append({
-            'image': {'source': {'image_uri': uri}},
-            'features': [{'type_': vision.Feature.Type.WEB_DETECTION, 'max_results': max_results}]
-        })
-    response = client.batch_annotate_images(requests=requests)
-    return response.responses  # List of responses, one per image
+def make_request(image, max_results):
+    return vision.AnnotateImageRequest(
+        image=vision.Image(
+            source=vision.ImageSource(image_uri=image.gcs_uri)
+        ),
+        features=[
+            vision.Feature(
+                type_=vision.Feature.Type.WEB_DETECTION,
+                max_results=max_results
+            )
+        ]
+    )
 
 
 def chunk_list(lst, chunk_size):
@@ -56,27 +48,31 @@ def chunk_list(lst, chunk_size):
         yield lst[i:i+chunk_size]
 
 
-def parse_vision_response(response):
+def image_matches(response):
     web_detection = response.web_detection
-    matching_images = web_detection.pages_with_matching_images
-    if len(matching_images) == 0 or not matching_images:
-        visually_similar_images = web_detection.visually_similar_images
-        if len(visually_similar_images) == 0 or not visually_similar_images:
-            yield None, None, None, "none found"
-        for match in visually_similar_images:
-            yield match.url, get_filename_from_url(match.url), match.url, "visually similar"
+    for page in web_detection.pages_with_matching_images:
+        for image in page.full_matching_images:
+            yield image_match_from_page(page, image, "full match")
+        for image in page.partial_matching_images:
+            yield image_match_from_page(page, image, "partial match")
 
-    for match in matching_images:
-        if len(match.full_matching_images) > 0:
-            matching_image_url = match.full_matching_images[0].url
-            matching_type = "full match"
-        elif len(match.partial_matching_images) > 0:
-            matching_image_url = match.partial_matching_images[0].url
-            matching_type = "partial match"
-        else:
-            continue
+    for image in web_detection.full_matching_images:
+        yield image_match_from_image(image, "full match")
 
-        yield match.url, match.page_title, matching_image_url, matching_type
+    for image in web_detection.partial_matching_images:
+        yield image_match_from_image(image, "partial match")
+
+    for image in web_detection.visually_similar_images:
+        yield image_match_from_image(image, "visually similar")
+
+
+def image_match_from_page(page, image, match_type):
+    return ImageMatch(page.url, page.page_title, image.url, match_type)
+
+
+def image_match_from_image(image, match_type):
+    image_filename = get_filename_from_url(image.url)
+    return ImageMatch(image.url, image_filename, image.url, match_type)
 
 
 def get_filename_from_url(url):

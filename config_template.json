@@ -1,0 +1,29 @@
+{
+  "images": {
+    "project": "<GOOGLE_PROJECT_NAME>",
+    "bucket": "<GOOGLE_BUCKET_NAME>"
+  },
+  "spreadsheet": {
+    "folder_id": "<GOOGLE_FOLDER_ID>",
+    "name": "Image Licensing"
+  },
+  "search": {
+    "result_increment": 10,
+    "max_results_for_creative_commons": 30,
+    "max_results_for_url": 40,
+    "max_results_for_text": 50
+  },
+  "sheet_style": {
+    "match_count": 10,
+    "width": {
+      "number": 60,
+      "image": 300,
+      "name": 400,
+      "page": 300,
+      "site": 200,
+      "match": 100,
+      "license": 250
+    },
+    "height": 180
+  }
+}

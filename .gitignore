@@ -1,4 +1,7 @@
-*.json
+config.json
+internals
 .DS_Store
 .idea
 __pycache__
+data
+thumbnails
