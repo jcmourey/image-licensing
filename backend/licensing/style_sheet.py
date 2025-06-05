@@ -1,6 +1,5 @@
-from licensing.config_model import Width
-from google_apis.sheet_styling import GoogleSheetStyle
-
+from backend.licensing.config_model import Width
+from backend.google_apis.sheet_styling import GoogleSheetStyle
 
 def style_sheet(sheet, header_spec, sheet_style):
     num_header_rows = len(sheet.headers)

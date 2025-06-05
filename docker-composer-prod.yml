@@ -1,0 +1,12 @@
+services:
+  production:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    volumes:
+      - .:/app
+    ports:
+      - "8000:8000"
+    environment:
+      - PYTHONPATH=/app
+    command: bash -c "cd /app/web-ui && npm install && npm run build && cd /app/backend && uvicorn backend.main:app --host 0.0.0.0 --port 8000"

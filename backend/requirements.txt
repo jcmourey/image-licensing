@@ -12,3 +12,8 @@ pillow~=11.2.1
 tldextract~=5.3.0
 datamodel-code-generator~=0.30.1
 webdriver-manager~=4.0.2
+sqlalchemy~=2.0.28
+sqlmodel~=0.0.24
+uvicorn[standard]
+fastapi==0.115.12
+pydevd_pycharm

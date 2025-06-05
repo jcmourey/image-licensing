@@ -1,7 +1,9 @@
-config.json
-internals
+backend/config.json
+backend/internals
 .DS_Store
 .idea
 __pycache__
-data
+backend/data
 thumbnails
+web-ui/node_modules/
+web-ui/dist/

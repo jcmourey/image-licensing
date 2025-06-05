@@ -1,4 +1,4 @@
-from licensing.config_model import Model
+from backend.licensing.config_model import Model
 
 class Configuration(Model):
     @classmethod

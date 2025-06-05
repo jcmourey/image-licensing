@@ -1,5 +1,4 @@
 import os.path
-
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
@@ -25,7 +24,7 @@ def main():
       creds.refresh(Request())
     else:
       flow = InstalledAppFlow.from_client_secrets_file(
-        "../internals/credentials.json", SCOPES
+          "../internals/credentials.json", SCOPES
       )
       creds = flow.run_local_server(port=0)
     # Save the credentials for the next run

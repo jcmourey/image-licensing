@@ -1,6 +1,5 @@
 from pydantic import BaseModel
-
-from google_apis.sheet import root_hyperlink, image_link, hyperlink
+from backend.google_apis.sheet import root_hyperlink, image_link, hyperlink
 
 
 class SheetRowMatch(BaseModel):

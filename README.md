@@ -30,24 +30,28 @@ Works with full or partial images.
 Copy the `config_template.json` to `config.json`:
 
 ```zsh 
-  cp config_template.json config.json
+  cp backend/config_template.json backend/config.json
 ```
  and enter the `<GOOGLE_XXX>` values in `config.json`.
 
 ### Install
-> Required to download license information from websites that protect against bots:
 
  [Download Google Chrome](https://www.google.com/chrome/)
+ 
+* Required to download license information from websites that protect against bots
+
 
 
 # Developer notes
 
 ### Configuration
-> When changing the structure of `config.json`:
 
-Update the `config_template.json` and regenerate the`pydantic` config model with:
+After changing the structure of `config.json`:
+
+* update `config_template.json`, and
+* regenerate the`pydantic` config model, with:
 
 ```zsh
-  jq '.spreadsheet.folder_id = "<GOOGLE_FOLDER_ID>" | .images.bucket = "<GOOGLE_BUCKET_NAME>" | .images.project = "<GOOGLE_PROJECT_NAME>"' config.json > config_template.json
-  datamodel-codegen --input config.json --input-file-type json --output licensing/config_model.py
+  jq -f backend/tools/make_json_template.jq backend/config.json > backend/config_template.json
+  datamodel-codegen --input backend/config.json --input-file-type json --output backend/licensing/config_model.py
 ```

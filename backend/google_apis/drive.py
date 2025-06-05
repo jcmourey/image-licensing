@@ -1,6 +1,5 @@
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaInMemoryUpload, MediaFileUpload
-import os
 from .credentials import get_creds
 
 
@@ -34,7 +33,7 @@ def upload_html_and_thumbs_to_drive(html, folder_id, thumb_paths):
     import os
     creds, service = get_drive_service()
 
-    # 1. Upload HTML file (to main folder)
+    # 1. Upload HTML file (to update folder)
     file_metadata = {
         'name': 'attributions.html',
         'parents': [folder_id],

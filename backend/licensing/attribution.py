@@ -1,13 +1,12 @@
 import os
 import tldextract
 from config import Configuration
-from google_apis.credentials import get_creds
-from google_apis.drive import upload_html_to_drive, upload_html_and_thumbs_to_drive
+from backend.google_apis.credentials import get_creds
+from backend.google_apis.drive import upload_html_and_thumbs_to_drive
 from gspread import authorize
 import requests
 from PIL import Image
 from io import BytesIO
-from urllib.parse import urlparse
 
 HTML_HEADER = '''<!DOCTYPE html>
 <html lang="en">
@@ -63,14 +62,14 @@ HTML_HEADER = '''<!DOCTYPE html>
 </style>
 </head>
 <body>
-  <main class="content">
+  <update class="content">
     <h1>Image Attribution</h1>
     <div class="thumbnail-grid">
 '''
 
 HTML_FOOTER = '''
     </div>
-  </main>
+  </update>
 </body>
 </html>
 '''
@@ -180,7 +179,6 @@ def extract_hyperlink(cell_value):
     else:
         return None
 
-THUMB_SIZE = (110, 110)
 
 def download_and_create_thumbnails(attributions, output_dir="thumbnails"):
     if not os.path.exists(output_dir):
