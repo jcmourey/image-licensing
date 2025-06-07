@@ -16,6 +16,26 @@ body {
   min-height: 100vh;
 }
 
+/* Custom utility classes for text handling */
+.overflow-wrap-anywhere {
+  overflow-wrap: anywhere;
+}
+
+.word-break-all {
+  word-break: break-all;
+}
+
+.break-long-words {
+  word-break: break-word;
+}
+
+/* Apply word-break to all URLs displayed in the app */
+a[href^="http"] {
+  word-break: break-word;
+  overflow-wrap: break-word;
+  hyphens: auto;
+}
+
 /* 
  * Note: We've removed most of the default styles
  * to prevent them from overriding Tailwind classes

@@ -21,13 +21,54 @@ export default defineConfig({
         // rewrite: (path) => path.replace(/^\/api/, '/api'),
         configure: (proxy, _options) => {
           proxy.on('error', (err, _req, _res) => {
-            console.log('proxy error', err);
+            console.log('Proxy error:', err);
           });
-          proxy.on('proxyReq', (_proxyReq, req, _res) => {
-            console.log('Sending Request:', req.method, req.url);
+          
+          proxy.on('proxyReq', (proxyReq, req, _res) => {
+            console.log(`📤 REQUEST: ${req.method} ${req.url}`);
+            
+            // Log request body for PUT/POST requests that might contain used_in data
+            if ((req.method === 'PUT' || req.method === 'POST') && req.url.includes('used_in')) {
+              let body = '';
+              req.on('data', (chunk) => {
+                body += chunk;
+              });
+              
+              req.on('end', () => {
+                try {
+                  const jsonBody = JSON.parse(body);
+                  console.log(`📤 REQUEST BODY: ${JSON.stringify(jsonBody, null, 2)}`);
+                  console.log(`📤 used_in value: "${jsonBody.used_in}" (${typeof jsonBody.used_in})`);
+                } catch (e) {
+                  console.log(`📤 REQUEST BODY: Unable to parse JSON - ${body}`);
+                }
+              });
+            }
           });
+          
           proxy.on('proxyRes', (proxyRes, req, _res) => {
-            console.log('Received Response from:', req.url, proxyRes.statusCode);
+            console.log(`📥 RESPONSE: ${req.method} ${req.url} - Status: ${proxyRes.statusCode}`);
+            
+            // Log response body for requests related to used_in
+            if (req.url.includes('used_in')) {
+              let body = '';
+              proxyRes.on('data', (chunk) => {
+                body += chunk;
+              });
+              
+              proxyRes.on('end', () => {
+                try {
+                  if (body) {
+                    const jsonBody = JSON.parse(body);
+                    console.log(`📥 RESPONSE BODY: ${JSON.stringify(jsonBody, null, 2)}`);
+                  } else {
+                    console.log(`📥 RESPONSE BODY: Empty response`);
+                  }
+                } catch (e) {
+                  console.log(`📥 RESPONSE BODY: ${body}`);
+                }
+              });
+            }
           });
         },
       }

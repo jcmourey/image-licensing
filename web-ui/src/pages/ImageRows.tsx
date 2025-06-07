@@ -1,21 +1,85 @@
 import { useState, useEffect } from 'react';
-import { type ImageRow } from '../components/generated-types';
+import { type ImageRow as ImageRowType } from '../components/generated-types';
 import { config } from '../config';
 import ImagePopup from '../components/ImagePopup';
-import { getDomain } from "../utils/string.ts";
+import ImageRow from '../components/ImageRow';
 
 // Explicitly enable HMR for this component
 if (import.meta.hot) {
   import.meta.hot.accept();
 }
 
+// Component to test Tailwind CSS
+const TailwindTestComponent = () => (
+  <div className="mb-6 border-4 border-red-500 p-4">
+    <h2 className="text-lg font-semibold mb-2 text-red-600">Tailwind CSS Test (Should have red border)</h2>
+    <div className="p-4 bg-gradient-to-r from-red-500 via-yellow-500 to-green-500 text-white rounded-lg shadow-xl">
+      <p className="font-bold text-xl">This element uses Tailwind classes</p>
+      <p className="text-sm mt-1">If you can see this colorful gradient background, Tailwind is working!</p>
+      <div className="flex space-x-4 mt-4">
+        <button className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors">
+          Blue Button
+        </button>
+        <button className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 transition-colors">
+          Green Button
+        </button>
+        <button className="px-4 py-2 bg-purple-500 text-white rounded-md hover:bg-purple-600 transition-colors">
+          Purple Button
+        </button>
+      </div>
+    </div>
+    <div className="mt-4 grid grid-cols-3 gap-4">
+      <div className="bg-pink-200 p-3 rounded-lg text-center">Pink</div>
+      <div className="bg-teal-200 p-3 rounded-lg text-center">Teal</div>
+      <div className="bg-orange-200 p-3 rounded-lg text-center">Orange</div>
+    </div>
+  </div>
+);
+
+// Loading state component
+const LoadingState = () => (
+  <div className="flex justify-center items-center h-64">
+    <div className="text-gray-600">Loading image rows...</div>
+  </div>
+);
+
+// Error state component
+const ErrorState = ({ message }: { message: string }) => (
+  <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+    <span className="block sm:inline">{message}</span>
+  </div>
+);
+
+// Empty state component
+const EmptyState = () => (
+  <div className="bg-white shadow-md rounded-lg p-6 text-center text-gray-500">
+    No image rows found
+  </div>
+);
+
+// Table header component
+const TableHeader = () => (
+  <div className="grid grid-cols-5 bg-gray-100 font-medium">
+    <div className="p-3 border-b border-r text-center">Image</div>
+    <div className="p-3 border-b border-r text-center">Selected Match</div>
+    <div className="p-3 border-b border-r text-center">License</div>
+    <div className="p-3 border-b border-r text-center">Used In</div>
+    <div className="p-3 border-b border-r text-center">Comment</div>
+  </div>
+);
+
 export const ImageRows = () => {
-  const [imageRows, setImageRows] = useState<ImageRow[]>([]);
+  const [imageRows, setImageRows] = useState<ImageRowType[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [popupImage, setPopupImage] = useState<string | null>(null);
-  const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
+  const [editingFieldData, setEditingFieldData] = useState<{
+    id: string | null;
+    fieldName: 'comment' | 'usedIn' | null;
+  }>({ id: null, fieldName: null });
   const [commentText, setCommentText] = useState<string>("");
+  const [usedInText, setUsedInText] = useState<string>("");
+  const [usedInOptions, setUsedInOptions] = useState<string[]>([]);
   const [saveStatus, setSaveStatus] = useState<{id: string, status: 'saving' | 'success' | 'error' | null}>({id: '', status: null});
 
   // Show popup with the full image
@@ -32,72 +96,290 @@ export const ImageRows = () => {
     setPopupImage(null);
   };
   
-  // Save updated comment to backend
-  const saveComment = async (id: string) => {
+  /* Temporarily comment out the handleImageDeleted function to restore functionality
+  const handleImageDeleted = (imageId: string) => {
+    console.log(`Image deleted: ${imageId}`);
+    // Update the local state to remove the deleted image
+    setImageRows(prev => prev.filter(row => row.id !== imageId));
+    // Alternatively, refetch all images
+    // fetchImageRows();
+  };
+  */
+  
+  // Function to fetch used_in options
+  const fetchUsedInOptions = async () => {
+    console.log("Fetching used_in options...");
+    try {
+      const response = await fetch("/api/used_in_options");
+      console.log("Used in options response status:", response.status);
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+      const data = await response.json();
+      console.log("Used in options received:", data);
+      
+      // Make sure we have an array, and include some default options if empty
+      if (!data || data.length === 0) {
+        setUsedInOptions(["Website", "Blog", "Documentation", "Marketing", "Not Used"]);
+      } else {
+        setUsedInOptions(data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch used_in options:", err);
+      // Set some default options rather than an empty array
+      setUsedInOptions(["Website", "Blog", "Documentation", "Marketing", "Not Used"]);
+    }
+  };
+  
+  // Direct selection and save function for option buttons
+  const selectAndSave = async (id: string, value: string) => {
+    console.log(`[selectAndSave] Direct save with value: "${value}" (${typeof value})`);
+    
     setSaveStatus({id, status: 'saving'});
+    
     try {
       // Encode the ID to handle slashes and special characters
       const encodedId = encodeURIComponent(id);
-      console.log(`Sending comment update to: /api/image/${encodedId}/comment`);
-      const response = await fetch(`/api/image/${encodedId}/comment`, {
+      const endpoint = `/api/image/${encodedId}/used_in`;
+      
+      // Log what we're about to send
+      console.log(`[selectAndSave] Sending to API: ${endpoint}`);
+      console.log(`[selectAndSave] Value: "${value}"`);
+      
+      // Create the request body directly with the provided value
+      const requestBody = JSON.stringify({ used_in: value });
+      console.log(`[selectAndSave] Request body: ${requestBody}`);
+      
+      const response = await fetch(endpoint, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ comment: commentText }),
+        body: requestBody,
       });
-  
-      if (!response.ok) {
-        console.error(`Failed to update comment: ${response.status} ${response.statusText}`);
-        throw new Error(`HTTP error! Status: ${response.status}`);
-      }
-  
-      // Update the local state
-      setImageRows(prevRows => 
-        prevRows.map(row => 
-          row.id === id ? {...row, comment: commentText} : row
-        )
-      );
       
-      setSaveStatus({id, status: 'success'});
-      setTimeout(() => {
-        setSaveStatus({id: '', status: null});
-        setEditingCommentId(null);
-      }, 2000);
+      // Log the response information
+      console.log(`[selectAndSave] Response status: ${response.status} ${response.statusText}`);
+      try {
+        const responseText = await response.clone().text();
+        console.log(`[selectAndSave] Response body: ${responseText}`);
+      } catch (err) {
+        console.log(`[selectAndSave] Could not read response body: ${err}`);
+      }
+      
+      if (response.ok) {
+        // Update local state to match what we sent
+        setUsedInText(value);
+        
+        // Update the row data
+        setImageRows(prev => 
+          prev.map(row => 
+            row.id === id ? { ...row, used_in: value } : row
+          )
+        );
+        
+        // If we updated a used_in value, refresh the used_in options to include new values
+        setTimeout(async () => {
+          await fetchUsedInOptions();
+        }, 500);
+        
+        // Set success status
+        setSaveStatus({id, status: 'success'});
+        console.log(`[selectAndSave] Successfully saved: "${value}"`);
+        
+        // Close edit mode after successful save
+        setEditingFieldData(prev => ({
+          ...prev,
+          id: null,
+          fieldName: null
+        }));
+        
+        // Clear status after a delay
+        setTimeout(() => {
+          setSaveStatus({id: '', status: null});
+        }, 2000);
+      } else {
+        console.error(`[selectAndSave] Error saving: ${response.statusText}`);
+        setSaveStatus({id, status: 'error'});
+        
+        // Clear error status after longer delay
+        setTimeout(() => {
+          setSaveStatus({id: '', status: null});
+        }, 5000);
+      }
     } catch (err) {
-      console.error("Failed to update comment:", err);
+      console.error(`[selectAndSave] Exception:`, err);
+      
+      // Force console display by using console.warn as well
+      console.warn(`[selectAndSave] Error details:`, {
+        error: err,
+        endpoint,
+        requestBody: { used_in: value },
+        id
+      });
+      
+      // Show error status
       setSaveStatus({id, status: 'error'});
       setTimeout(() => {
         setSaveStatus({id: '', status: null});
-      }, 3000);
+      }, 5000); // Give more time to see the error message
     }
   };
   
-  // Toggle edit mode for a comment
-  const toggleEditComment = (id: string, currentComment: string | null) => {
-    if (editingCommentId === id) {
+  // Save field to backend
+  const saveField = async (id: string, fieldName: 'comment' | 'usedIn') => {
+    setSaveStatus({id, status: 'saving'});
+    
+    // Capture the current values at the moment of saving to ensure we use the most recent values
+    const currentCommentText = commentText;
+    const currentUsedInText = usedInText;
+    
+    console.log(`[saveField] Starting save for ${fieldName} on id: ${id}`);
+    console.log(`[saveField] Current commentText: "${currentCommentText}"`);
+    console.log(`[saveField] Current usedInText: "${currentUsedInText}"`);
+    
+    try {
+      // Encode the ID to handle slashes and special characters
+      const encodedId = encodeURIComponent(id);
+      
+      const endpoint = fieldName === 'comment' 
+        ? `/api/image/${encodedId}/comment`
+        : `/api/image/${encodedId}/used_in`;
+      
+      // Get the current value from captured state to avoid race conditions
+      const fieldValue = fieldName === 'comment' ? currentCommentText : currentUsedInText;
+      const fieldKey = fieldName === 'comment' ? 'comment' : 'used_in';
+      
+      console.log(`[saveField] Using value: "${fieldValue}" (${typeof fieldValue})`);
+      
+      // Log the actual value being sent to the API
+      console.log(`Sending ${fieldName} update to: ${endpoint}, value: "${fieldValue}"`);
+      console.log(`Value type: ${typeof fieldValue}`);
+      
+      // Use empty string if value is undefined or null (API might expect this)
+      const valueToSend = fieldValue === undefined || fieldValue === null ? '' : fieldValue;
+      
+      // Log detailed information about the request
+      console.log(`[API REQUEST] ${endpoint}`);
+      console.log(`[API REQUEST] Field name: ${fieldName}`);
+      console.log(`[API REQUEST] Field key: ${fieldKey}`);
+      console.log(`[API REQUEST] Original value: "${fieldValue}" (${typeof fieldValue})`);
+      console.log(`[API REQUEST] Value to send: "${valueToSend}" (${typeof valueToSend})`);
+      console.log(`[API REQUEST] Request body: ${JSON.stringify({ [fieldKey]: valueToSend })}`);
+      
+      // Create the request body and log it once more to be absolutely sure what's being sent
+      const requestBody = JSON.stringify({ [fieldKey]: valueToSend });
+      console.log(`[API REQUEST] Final JSON body: ${requestBody}`);
+      
+      const response = await fetch(endpoint, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: requestBody,
+      });
+      
+      // Log the response information
+      console.log(`[API RESPONSE] Status: ${response.status} ${response.statusText}`);
+      try {
+        const responseText = await response.clone().text();
+        console.log(`[API RESPONSE] Body: ${responseText}`);
+      } catch (err) {
+        console.log(`[API RESPONSE] Could not read response body: ${err}`);
+      }
+  
+      if (response.ok) {
+        // Update the imageRows state with the new value
+        setImageRows(prev => 
+          prev.map(row => 
+            row.id === id 
+              ? { 
+                  ...row, 
+                  [fieldName === 'comment' ? 'comment' : 'used_in']: fieldName === 'comment' ? currentCommentText : currentUsedInText 
+                } 
+              : row
+          )
+        );
+        
+        // If we updated a used_in value, refresh the used_in options to include new values
+        if (fieldName === 'usedIn') {
+          setTimeout(async () => {
+            await fetchUsedInOptions();
+          }, 500);
+        }
+        
+        // Set success status
+        setSaveStatus({id, status: 'success'});
+        console.log(`[saveField] Successfully saved ${fieldName}`);
+        
+        // Clear status and exit edit mode after a delay
+        setTimeout(() => {
+          setEditingFieldData({ id: null, fieldName: null });
+          setSaveStatus({id: '', status: null});
+        }, 2000);
+      } else {
+        console.error(`[saveField] Error saving ${fieldName}: ${response.statusText}`);
+        setSaveStatus({id, status: 'error'});
+        
+        // Clear error status after longer delay
+        setTimeout(() => {
+          setSaveStatus({id: '', status: null});
+        }, 5000);
+      }
+          } catch (err) {
+      console.error(`[saveField] Exception:`, err);
+      setSaveStatus({id, status: 'error'});
+      
+      setTimeout(() => {
+        setSaveStatus({id: '', status: null});
+      }, 5000);
+          }
+        };
+        
+  // Toggle edit mode for a field
+  const toggleEditField = (id: string, currentValue: string | null, fieldName: 'comment' | 'usedIn') => {
+    console.log("Toggling edit for field:", fieldName, "id:", id, "current value:", currentValue);
+    const isCurrentlyEditing = editingFieldData.id === id && editingFieldData.fieldName === fieldName;
+    
+    if (isCurrentlyEditing) {
       // Exit edit mode
-      setEditingCommentId(null);
-      setCommentText("");
+      console.log("Exiting edit mode");
+      setEditingFieldData({ id: null, fieldName: null });
     } else {
       // Enter edit mode
-      setEditingCommentId(id);
-      setCommentText(currentComment || "");
+      console.log("Entering edit mode");
+      setEditingFieldData({ id, fieldName });
+      
+      // Find the current row to get the most up-to-date value
+      const currentRow = imageRows.find(row => row.id === id);
+      
+      if (fieldName === 'comment') {
+        // Set comment text from the row data or from the passed value
+        const newValue = currentRow?.comment || currentValue || "";
+        console.log(`Setting commentText to: "${newValue}"`);
+        setCommentText(newValue);
+      } else {
+        // Set used_in text from the row data or from the passed value
+        const newValue = currentRow?.used_in || currentValue || "";
+        console.log(`Setting usedInText to: "${newValue}"`);
+        setUsedInText(newValue);
+      }
     }
   };
-  
-  // Save updated comment to backend
 
+  // Fetch image rows from the API
   useEffect(() => {
-    // Fetch image rows from the API
+    console.log("Fetching image rows...");
     fetch("/api/image_rows")
       .then(response => {
+        console.log("Image rows response status:", response.status);
         if (!response.ok) {
           throw new Error(`HTTP error! Status: ${response.status}`);
         }
         return response.json();
       })
       .then(data => {
+        console.log("Image rows data received:", data.length, "rows");
         setImageRows(data);
         setLoading(false);
       })
@@ -108,37 +390,66 @@ export const ImageRows = () => {
       });
   }, []);
 
+  // Fetch used_in options from the API on component mount
+  useEffect(() => {
+    fetchUsedInOptions();
+  }, []);
+  
   useEffect(() => {
     document.title = "Image Collection";
     console.log("ImageRows component mounted/updated:", new Date().toISOString());
   }, []);
 
-  // Component to test Tailwind CSS
-  const TailwindTestComponent = () => (
-    <div className="mb-6 border-4 border-red-500 p-4">
-      <h2 className="text-lg font-semibold mb-2 text-red-600">Tailwind CSS Test (Should have red border)</h2>
-      <div className="p-4 bg-gradient-to-r from-red-500 via-yellow-500 to-green-500 text-white rounded-lg shadow-xl">
-        <p className="font-bold text-xl">This element uses Tailwind classes</p>
-        <p className="text-sm mt-1">If you can see this colorful gradient background, Tailwind is working!</p>
-        <div className="flex space-x-4 mt-4">
-          <button className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors">
-            Blue Button
-          </button>
-          <button className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 transition-colors">
-            Green Button
-          </button>
-          <button className="px-4 py-2 bg-purple-500 text-white rounded-md hover:bg-purple-600 transition-colors">
-            Purple Button
-          </button>
+  // Render content based on state
+  const renderContent = () => {
+    console.log("Rendering content with state:", { 
+      loading, 
+      error, 
+      imageRowsCount: imageRows?.length || 0,
+      editingFieldData,
+      usedInOptions: usedInOptions?.length || 0
+    });
+    
+    if (loading) {
+      return <LoadingState />;
+    }
+    
+    if (error) {
+      return <ErrorState message={error} />;
+    }
+    
+    if (!imageRows || imageRows.length === 0) {
+      return <EmptyState />;
+    }
+    
+    return (
+      <div className="bg-white shadow-md rounded-lg overflow-hidden">
+        <TableHeader />
+        <div className="divide-y">
+          {imageRows.map((row) => (
+            <ImageRow
+              key={row.id}
+              row={row}
+              editingFieldData={editingFieldData}
+              commentText={commentText}
+              usedInText={usedInText}
+              usedInOptions={usedInOptions}
+              saveStatus={saveStatus}
+              onShowPopup={showPopup}
+              onHidePopup={hidePopup}
+              onCommentChange={setCommentText}
+              onUsedInChange={setUsedInText}
+              onToggleEdit={toggleEditField}
+              onSaveField={saveField}
+              onSelectAndSave={selectAndSave}
+              // Temporarily remove onImageDeleted prop to fix rendering
+              // onImageDeleted={handleImageDeleted}
+            />
+          ))}
         </div>
       </div>
-      <div className="mt-4 grid grid-cols-3 gap-4">
-        <div className="bg-pink-200 p-3 rounded-lg text-center">Pink</div>
-        <div className="bg-teal-200 p-3 rounded-lg text-center">Teal</div>
-        <div className="bg-orange-200 p-3 rounded-lg text-center">Orange</div>
-      </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <div className="max-w-7xl py-8 px-6 md:px-10 bg-gray-50 min-h-screen" style={{marginLeft: "50px"}}>
@@ -149,149 +460,7 @@ export const ImageRows = () => {
       {/* Conditionally render the Tailwind CSS Test Component based on flag */}
       {config.showTailwindTest && <TailwindTestComponent />}
 
-      {loading ? (
-        <div className="flex justify-center items-center h-64">
-          <div className="text-gray-600">Loading image rows...</div>
-        </div>
-      ) : error ? (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
-          <span className="block sm:inline">{error}</span>
-        </div>
-      ) : imageRows.length === 0 ? (
-        <div className="bg-white shadow-md rounded-lg p-6 text-center text-gray-500">
-          No image rows found
-        </div>
-      ) : (
-        <div className="bg-white shadow-md rounded-lg overflow-hidden">
-          {/* Table Header */}
-          <div className="grid grid-cols-5 bg-gray-100 font-medium">
-            <div className="p-3 border-b border-r text-center">Image</div>
-            <div className="p-3 border-b border-r text-center">Selected Match</div>
-            <div className="p-3 border-b border-r text-center">License</div>
-            <div className="p-3 border-b border-r text-center">Used In</div>
-            <div className="p-3 border-b border-r text-center">Comment</div>
-          </div>
-
-          {/* Table Body */}
-          <div className="divide-y">
-            {imageRows.map((row) => (
-              <div key={row.id} className="grid grid-cols-5 min-h-[150px]">
-                {/* Image */}
-                <div className="p-3 border-r flex flex-col items-center justify-center h-full">
-                  <img
-                    src={row.thumbnail_url}
-                    alt="Image"
-                    className="w-40 h-25 object-cover rounded cursor-zoom-in"
-                    onMouseEnter={() => showPopup(row.thumbnail_url)}
-                    onMouseLeave={hidePopup}
-                  />
-                </div>
-
-                {/* Best Match with link to page URL */}
-                <div className="p-3 border-r flex flex-col items-center text-center">
-                  {row.image_url && row.best_page_url ? (
-                      <>
-                        {row.matching_type && (
-                          <span className="text-xs font-medium text-gray-500 mb-1 inline-block px-2 py-1 bg-gray-100 rounded">
-                            {row.matching_type}
-                          </span>
-                        )}
-                        <img
-                          src={row.image_url}
-                          alt="Image"
-                          className="w-40 h-25 object-cover rounded cursor-zoom-in"
-                          onMouseEnter={() => showPopup(row.image_url)}
-                          onMouseLeave={hidePopup}
-                        />
-                        <a href={row.best_page_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline mt-2">
-                          {getDomain(row.best_page_url)}
-                        </a>
-                      </>
-                    ) : (
-                      <span>No match found</span>
-                    )
-                  }
-                </div>
-                
-                {/* Attribution with license link */}
-                <div className="p-3 border-r flex items-center justify-center h-full">
-                  {row.license_url && row.attribution ? (
-                    <a href={row.license_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
-                      {row.attribution}
-                    </a>
-                  ) : (
-                    <span>{row.attribution || "None found"}</span>
-                  )}
-                </div>
-                
-                {/* Used In */}
-                <div className="p-3 border-r flex items-center justify-center h-full">
-                  {row.used_in || "Not specified"}
-                </div>
-                
-                {/* Comment */}
-                <div className="p-3 flex flex-col justify-center h-full w-full relative">
-                  {editingCommentId === row.id ? (
-                    <>
-                      <textarea
-                        className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        value={commentText}
-                        onChange={(e) => setCommentText(e.target.value)}
-                        rows={3}
-                        placeholder="Enter comment here..."
-                        autoFocus
-                      />
-                      <div className="flex justify-end mt-2 w-full space-x-2">
-                        <button
-                          onClick={() => toggleEditComment(row.id, row.comment)}
-                          className="px-3 py-1 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300"
-                        >
-                          Cancel
-                        </button>
-                        <button
-                          onClick={() => saveComment(row.id)}
-                          className="px-3 py-1 bg-blue-500 text-white rounded-md hover:bg-blue-600"
-                          disabled={saveStatus.id === row.id && saveStatus.status === 'saving'}
-                        >
-                          {saveStatus.id === row.id && saveStatus.status === 'saving' 
-                            ? 'Saving...' 
-                            : 'Save'}
-                        </button>
-                      </div>
-                      {saveStatus.id === row.id && saveStatus.status === 'error' && (
-                        <div className="text-red-500 text-sm mt-1">Error saving comment</div>
-                      )}
-                    </>
-                  ) : (
-                    <div className="flex items-start w-full">
-                      <button
-                        onClick={() => toggleEditComment(row.id, row.comment)}
-                        className="mr-2 text-gray-400 hover:text-blue-600 focus:outline-none"
-                        title="Edit comment"
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" 
-                            stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" 
-                            className="feather feather-edit-2">
-                          <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path>
-                        </svg>
-                      </button>
-                      <div className="text-gray-700 flex-1">
-                        {row.comment || "No comment"}
-                      </div>
-                      {saveStatus.id === row.id && saveStatus.status === 'success' && (
-                        <div className="absolute right-2 top-2 text-green-500 text-xs">
-                          Saved ✓
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      {renderContent()}
     </div>
   );
 };

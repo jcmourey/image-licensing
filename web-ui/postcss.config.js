@@ -1,6 +1,9 @@
 export default {
   plugins: {
-    '@tailwindcss/postcss': {},
+    '@tailwindcss/postcss': {
+      // Ensure v4 compatibility
+      configPath: './tailwind.config.js',
+    },
     autoprefixer: {},
   },
 }

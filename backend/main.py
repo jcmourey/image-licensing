@@ -17,7 +17,6 @@ from backend.licensing.style_sheet import style_sheet
 from backend.google_apis.sheet_from_db import GoogleSheetFromDatabase
 from backend.config.config import Configuration
 from backend.model.image import Image
-from backend.api.image_response import ImageResponse
 from backend.model.license import License
 from backend.model.match import Match
 from backend.update.matches import update_images
@@ -25,7 +24,7 @@ from backend.update.sync_images import sync_images
 from backend.update.thumbnails import update_thumbnails
 from backend.update.licenses import update_licenses, update_approved_licenses, fix_unique_licenses, sort_license_urls
 from backend.database.repository import DatabaseRepository
-from backend.api import image_rows, comment
+from backend.api import image_rows, comment, used_in, image
 import tldextract
 
 app = FastAPI(title="Image Management API")
@@ -41,7 +40,9 @@ app.add_middleware(
 
 # Include routers
 app.include_router(image_rows.router)
+app.include_router(image.router)
 app.include_router(comment.router)
+app.include_router(used_in.router)
 
 @app.get("/")
 async def root():
@@ -111,43 +112,6 @@ def get_unlisted_licenses():
 
         sorted_urls = sorted(unlisted_urls)
         return sorted_urls
-
-
-@app.get("/api/images")
-def get_images():
-    print("Fetching images from database")
-    database = DatabaseRepository()
-    with database.session_scope() as session:
-        statement = select(Image)
-        images = session.exec(statement).all()
-        response = []
-        for image in images:
-            statement = select(License).where(License.parent_image_id == image.id and len(License.urls) > 0)
-            licenses = session.exec(statement).all()
-
-            approved_license_urls = list(dict.fromkeys([url for license in licenses for url in license.approved_license_urls]))
-            all_license_urls = list(dict.fromkeys([url for license in licenses for url in license.urls]))
-            published_licenses = approved_license_urls if len(approved_license_urls) > 0 else all_license_urls
-
-            approved_matches = [license.parent_match for license in licenses if license.approved]
-            all_matches = [license.parent_match for license in licenses]
-            published_matches = approved_matches if len(approved_matches) > 0 else all_matches
-            published_match_page_urls = [match.page_url for match in published_matches]
-            published_match_image_urls = [match.image_url for match in published_matches]
-
-            image_response = ImageResponse(
-                id=image.id,
-                name=image.name,
-                thumbnail_url=f"/api/thumbnail/{image.name}",
-                match_count=len(image.matches),
-                license_urls=published_licenses,
-                is_approved=len(approved_license_urls) > 0,
-                match_page_urls=published_match_page_urls,
-                match_image_urls=published_match_image_urls
-            )
-            response.append(image_response)
-    response.sort(key=lambda x: (x.is_approved, len(x.license_urls)), reverse=True)
-    return response
 
 # Assuming this is in your main API file where other endpoints are defined
 @app.get("/api/thumbnail/{image_name}")
