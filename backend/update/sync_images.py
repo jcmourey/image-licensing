@@ -24,9 +24,15 @@ def sync_images(storage, database):
             ]
             session.add_all(new_images)
             print(f"Added {len(new_images)} new images to database")
+        else:
+            print("No new images to add")
 
         if len(obsolete) > 0:
             statement = select(Image).where(Image.id.in_(obsolete))
             images_to_delete = session.exec(statement).all()
             for image in images_to_delete:
                 session.delete(image)
+            print(f"Deleted {len(obsolete)} images from database")
+        else:
+            print("No obsolete images to delete")
+

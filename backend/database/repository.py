@@ -4,6 +4,7 @@ from backend.model.license import License
 from backend.model.match import Match
 from pathlib import Path
 from contextlib import contextmanager
+from backend.utilities.print import print_red
 
 class DatabaseRepository:
     def __init__(self, data_path):
@@ -64,13 +65,35 @@ class DatabaseRepository:
             images = session.exec(statement).all()
             return {image.blob_id: image for image in images}
 
-    def save_unique_matches(self, matches: list[Match], image_id: str):
+    # matches has a unique constraint on parent_image_id and page_url
+    # make sure to only save new matches to avoid exceptions
+    def save_unique_matches(self, matches: list[Match], image_id: str, requested_web_entities: int, found_web_entities: int):
         with self.session_scope() as session:
-            statement = select(Match).where(Match.parent_image_id == image_id)
-            existing_matches = session.exec(statement).all()
-            existing_match_ids = {match.id for match in existing_matches}
-            new_matches = [match for match in matches if match.id not in existing_match_ids]
-            session.add_all(new_matches)
+            # Save matches
+            statement = select(Match.page_url).where(Match.parent_image_id == image_id)
+            existing_match_urls = session.exec(statement).all()
+            new_matches = [match for match in matches if match.page_url not in existing_match_urls]
+            unique_matches = list({m.page_url: m for m in new_matches}.values())
+            if len(unique_matches) > 0:
+                session.add_all(unique_matches)
+                match_with_page_count = len([match for match in unique_matches if match.page_url != match.image_url])
+                print(f"Saved {len(unique_matches)} new matches (including {match_with_page_count} with page urls) to database for image {image_id}")
+            
+            # Update image web entities fields
+            image_statement = select(Image).where(Image.id == image_id)
+            image = session.exec(image_statement).one_or_none()
+            if image:
+                old_requested_web_entities = image.web_entities_requested
+                old_found_web_entities = image.web_entities_found
+                if old_requested_web_entities != requested_web_entities or old_found_web_entities != found_web_entities:
+                    image.web_entities_requested = requested_web_entities
+                    image.web_entities_found = found_web_entities
+                    session.add(image)
+                    print(f"Updated web entities for image {image_id}: requested={old_requested_web_entities} -> {requested_web_entities}, found={old_found_web_entities} -> {found_web_entities}")
+                else:
+                    print(f"Web entities for image {image_id} are already up to date: requested={requested_web_entities}, found={found_web_entities}")
+            else:
+                print_red(f"Image {image_id} not found in database")
 
     def fetch_licenses_by_image_id(self, image_id: str) -> list[License]:
         with self.session_scope() as session:

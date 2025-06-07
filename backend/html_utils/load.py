@@ -1,8 +1,10 @@
 import requests
+import urllib3
 from webdriver_manager.chrome import ChromeDriverManager
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
+from selenium.common.exceptions import WebDriverException
 
 USER_AGENT = (
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
@@ -36,7 +38,7 @@ def load_html(url):
             response.raise_for_status()
             html = response.text
             return html
-    except (requests.exceptions.ConnectionError, requests.exceptions.ReadTimeout) as err:
+    except (requests.exceptions.ConnectionError, requests.exceptions.ReadTimeout, requests.exceptions.HTTPError) as err:
         print(f"{err} → fallback to Selenium")
         return load_with_selenium(url)
 

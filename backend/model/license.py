@@ -1,8 +1,9 @@
 import requests
 import urllib3
+from selenium.common import WebDriverException
 from sqlalchemy.ext.mutable import MutableDict, MutableList
 from sqlmodel import SQLModel, Field, Relationship
-from sqlalchemy import JSON, Column, select
+from sqlalchemy import JSON, Column
 from typing import Optional, TYPE_CHECKING, Dict, List, Any
 from backend.google_apis.sheet import hyperlink
 from backend.html_utils.load import load_html
@@ -20,6 +21,7 @@ class License(SQLModel, table=True):
     meta_info: Dict[str, Any] = Field(default_factory=dict, sa_column=Column(MutableDict.as_mutable(JSON)))
     urls: List[str] = Field(default_factory=list, sa_column=Column(MutableList.as_mutable(JSON)))
     error: Optional[str] = None
+    approved: bool = Field(default=False)
 
     parent_match: Optional["Match"] = Relationship(back_populates="license")
 
@@ -33,8 +35,8 @@ class License(SQLModel, table=True):
                 return cls.with_error(match, err)
             else:
                 raise err
-        except urllib3.exceptions.NameResolutionError as err:
-            print(f"NameResolutionError: {err}")
+        except (urllib3.exceptions.NameResolutionError, urllib3.exceptions.ReadTimeoutError, WebDriverException) as err:
+            print(err)
             return cls.with_error(match, err)
         except requests.exceptions.ConnectionError as err:
             print(f"Warning: ConnectionError: {err}")
@@ -48,37 +50,17 @@ class License(SQLModel, table=True):
         return cls(parent_match_id=match.id, parent_image_id=match.parent_image_id, meta_info={}, urls=[],
                    error=str(error))
 
-    @classmethod
-    def fix_license_metadata(cls, database):
-        with database.session_scope() as session:
-            statement = select(License)
-            licenses = session.exec(statement).scalars().all()
-            print(f"Fixing metadata in {len(licenses)} licenses")
-            changed_licenses = 0
-            for license in licenses:
-                if license.parent_image_id == 'image-licensing-file/Moving Museum_rollups_printer margin-6.png/1747851738070083':
-                    pass
-                changed = False
-                for key in list(license.meta_info.keys()):
-                    value = license.meta_info[key]
-                    if isinstance(value, str) and value.startswith("http"):
-                        print(f"Found URL: {value}")
-                        del license.meta_info[key]
-                        license.urls.append(value)
-                        changed = True
-                if changed:
-                    changed_licenses += 1
-                    session.add(license)
-                    session.commit()
-            print(f"Updated {changed_licenses} licenses")
-
     @property
     def meta_info_text(self):
         return str(self.meta_info).replace("\\n", "").replace("\\t", "")
 
     @property
-    def is_creative_commons_license(self):
-        return any("creativecommons.org" in url for url in self.urls)
+    def is_approved(self):
+        return len(self.approved_license_urls) > 0
+
+    @property
+    def approved_license_urls(self):
+        return [url for url in self.urls if "creativecommons.org" in url or "fandom.com/licensing" in url]
 
     @property
     def sheet_cell_representation(self):
@@ -91,7 +73,7 @@ class License(SQLModel, table=True):
     @property
     def sort_key(self):
         return (
-            not self.is_creative_commons_license,
+            not self.is_approved,
             not self.urls,
             not self.meta_info
         )

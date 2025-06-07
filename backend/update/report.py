@@ -15,6 +15,7 @@ def report(database):
             any(match.license and match.license.urls for match in image.matches)
             for image in images
         )
+        print("\nREPORT")
         print(f"Image count: {image_count}")
         print(f"License count: {license_count}")
         print(f"URL count: {url_count}")

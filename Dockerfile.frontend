@@ -1,13 +1,11 @@
-FROM --platform=linux/arm64 node:20-slim
-
-WORKDIR /app/web-ui
-
-COPY web-ui/package*.json ./
-
-RUN npm ci --platform=linux --arch=x64
-
+FROM node:20-alpine
+WORKDIR /web-ui
+COPY web-ui/package.json ./
+COPY web-ui/package-lock.json ./
+RUN npm install
 COPY web-ui/ ./
-
-EXPOSE 5173
-
 CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
+
+
+
+

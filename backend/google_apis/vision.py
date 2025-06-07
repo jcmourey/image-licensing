@@ -10,26 +10,26 @@ class Vision:
         self.client = vision.ImageAnnotatorClient(credentials=self.creds)
         self.publish = publish
 
-    def batch_search(self, image_set):
+    def batch_search(self, image_match_list, max_search_results: int):
         # the maximum batch size for Google Vision batch annotation is 16
         image_number = 1
-        for batch in chunk_list(image_set.eligible_images, 16):
+        for batch in chunk_list(image_match_list, 16):
             print("Annotating images", image_number, "to", image_number + len(batch) - 1)
-            self.batch_annotate_gcs_images(batch)
+            self.batch_annotate_gcs_images(batch, max_search_results)
             image_number += len(batch)
 
-    def batch_annotate_gcs_images(self, images):
-        requests = [make_request(image, image.match_limit) for image in images]
+    def batch_annotate_gcs_images(self, image_match_batch, max_search_results: int):
+        requests = [make_request(image, max_search_results) for image, match_count in image_match_batch]
         response = self.client.batch_annotate_images(requests=requests)
+        images = [image for image, _ in image_match_batch]
         for image, response in zip(images, response.responses):
-            for match in image_matches(response, image.id):
-                self.publish(match)
-                if image.has_enough:
-                    break
+            matches = image_matches(response, image.id)
+            found_web_entities = len(response.web_detection.web_entities)
+            self.publish(matches, image.id, max_search_results, found_web_entities)
 
 
 
-def make_request(image, max_results):
+def make_request(image, requested_web_entities):
     return vision.AnnotateImageRequest(
         image=vision.Image(
             source=vision.ImageSource(image_uri=image.gcs_uri)
@@ -37,7 +37,7 @@ def make_request(image, max_results):
         features=[
             vision.Feature(
                 type_=vision.Feature.Type.WEB_DETECTION,
-                max_results=max_results
+                max_results=requested_web_entities
             )
         ]
     )

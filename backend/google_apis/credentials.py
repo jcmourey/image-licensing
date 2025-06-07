@@ -4,8 +4,8 @@ from google.oauth2.credentials import Credentials
 from google.auth.transport.requests import Request
 
 # --- Set up Google APIs ---
-SERVICE_ACCOUNT_FILE = 'internals/credentials.json'  # Update with your path
-TOKEN_FILE = 'internals/token.json'
+SERVICE_ACCOUNT_FILE = 'backend/internals/credentials.json'  # Update with your path
+TOKEN_FILE = 'backend/internals/token.json'
 SCOPES = [
     'https://www.googleapis.com/auth/drive',
     'https://www.googleapis.com/auth/spreadsheets',

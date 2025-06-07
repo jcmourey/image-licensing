@@ -1,7 +1,7 @@
 from typing import Optional, TYPE_CHECKING
 
 from sqlalchemy import UniqueConstraint
-from sqlmodel import SQLModel, Field, Relationship, select
+from sqlmodel import SQLModel, Field, Relationship
 from .license import License
 
 if TYPE_CHECKING:
@@ -29,10 +29,6 @@ class Match(SQLModel, table=True):
     @property
     def has_license_urls(self):
         return bool(self.license.urls)
-
-    @property
-    def has_creative_commons_license(self):
-        return self.license.is_creative_commons_license
 
     @property
     def sort_key(self):

@@ -6,6 +6,7 @@ class ImageResponse(BaseModel):
     name: str
     thumbnail_url: str
     match_count: int
-    license_count: int
     license_urls: List[str]
-    has_creative_commons_license: bool
+    is_approved: bool
+    match_page_urls: List[str]
+    match_image_urls: List[str]

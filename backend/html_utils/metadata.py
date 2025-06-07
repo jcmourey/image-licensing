@@ -61,7 +61,7 @@ def extract_metadata(html, debug) -> (dict[str, str], list[str]):
             if isinstance(data, dict) and "license" in data:
                 add_info("schema:license", data["license"])
         except json.JSONDecodeError as error:
-            print("JSONDecodeError:", error, "decoding json_ld_tags")
+            print("JSONDecodeError:", error, "decoding json_ld_tags:", script.string)
             continue
 
     # Visible text scan

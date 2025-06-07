@@ -9,17 +9,17 @@ import os
 from backend.google_apis.storage import Storage
 from backend.image_utils.thumbnail import ThumbnailService
 from backend.licensing.style_sheet import style_sheet
-from backend.google_apis.vision import Vision
 from backend.google_apis.sheet_from_db import GoogleSheetFromDatabase
 from backend.licensing.config import Configuration
 from backend.model.image import Image
 from backend.model.image_response import ImageResponse
 from backend.model.license import License
+from backend.model.match import Match
+from backend.update.matches import update_images
 from backend.update.sync_images import sync_images
 from backend.update.thumbnails import update_thumbnails
 from backend.update.report import report
-from backend.update.licenses import update_licenses
-from backend.model.set import ImageSet
+from backend.update.licenses import update_licenses, update_approved_licenses, fix_unique_licenses
 from backend.database.repository import DatabaseRepository
 
 
@@ -28,7 +28,7 @@ app = FastAPI()
 # Allow frontend dev server to call the API (only needed in dev mode)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=["http://localhost:5173", "http://macstudiojeancharles.local:5173"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -40,7 +40,9 @@ def health_check():
     print("Health check")
     return {"status": "ok"}
 
-DATA_PATH = Path("backend/data")
+BACKEND_PATH = Path("backend")
+DATA_PATH = BACKEND_PATH / "data"
+CONFIG_PATH = BACKEND_PATH / "config.json"
 
 @app.get("/api/images")
 def get_images():
@@ -51,26 +53,31 @@ def get_images():
         images = session.exec(statement).all()
         response = []
         for image in images:
-            statement = select(License).where(License.parent_image_id == image.id)
+            statement = select(License).where(License.parent_image_id == image.id and len(License.urls) > 0)
             licenses = session.exec(statement).all()
-            license_count = len(licenses)
 
-            statement = select(License.urls).where(License.parent_image_id == image.id and len(License.urls) > 0)
-            license_urls_nested = session.exec(statement).all()
-            license_urls = list(dict.fromkeys([url for sublist in license_urls_nested for url in sublist if sublist]))
-            license_urls.sort(key=lambda x: "creativecommons.org" in x, reverse=True)
+            approved_license_urls = list(dict.fromkeys([url for license in licenses for url in license.approved_license_urls]))
+            all_license_urls = list(dict.fromkeys([url for license in licenses for url in license.urls]))
+            published_licenses = approved_license_urls if len(approved_license_urls) > 0 else all_license_urls
+
+            approved_matches = [license.parent_match for license in licenses if license.approved]
+            all_matches = [license.parent_match for license in licenses]
+            published_matches = approved_matches if len(approved_matches) > 0 else all_matches
+            published_match_page_urls = [match.page_url for match in published_matches]
+            published_match_image_urls = [match.image_url for match in published_matches]
 
             image_response = ImageResponse(
                 id=image.id,
                 name=image.name,
                 thumbnail_url=f"/api/thumbnail/{image.name}",
                 match_count=len(image.matches),
-                license_count=license_count,
-                license_urls=license_urls,
-                has_creative_commons_license=any(license.is_creative_commons_license for license in licenses)
+                license_urls=published_licenses,
+                is_approved=len(approved_license_urls) > 0,
+                match_page_urls=published_match_page_urls,
+                match_image_urls=published_match_image_urls
             )
             response.append(image_response)
-    response.sort(key=lambda x: (x.has_creative_commons_license, len(x.license_urls)), reverse=True)
+    response.sort(key=lambda x: (x.is_approved, len(x.license_urls)), reverse=True)
     return response
 
 # Assuming this is in your main API file where other endpoints are defined
@@ -85,28 +92,25 @@ async def get_thumbnail(image_name: str):
 @app.get("/api/update")
 def update():
     db_repo = DatabaseRepository(data_path=DATA_PATH)
-    config = Configuration.load()
+    config = Configuration.load(path=CONFIG_PATH)
 
     storage_client = Storage(config.google_project_id, config.google_bucket_id)
     thumbnail_service = ThumbnailService(storage_client, DATA_PATH, config.thumbnail)
-    image_set = ImageSet(
-        storage=storage_client,
-        database=db_repo,
-        thumbnail_service=thumbnail_service,
-        max_matches=config.max_search_results
-    )
     sync_images(storage_client, db_repo)
+
+    # only call this when adding new images
     update_thumbnails(db_repo, thumbnail_service)
+
+    #update_licenses(db_repo)
+
+    # one time thing:
+    fix_unique_licenses(db_repo)
+    update_approved_licenses(db_repo)
+
+    update_images(db_repo, max_search_results=config.max_search_results)
     update_licenses(db_repo)
-    report(db_repo)
+    #report(db_repo)
 
-    vision = Vision(publish=db_repo.save_unique_matches)
-    #
-    # while not image_set.is_complete:
-    #     process_images = image_set.eligible_images
-    #     vision.batch_search(image_set)
-
-    # print("Database updated successfully")
 
 
 def generate_sheet(config, match_count):
@@ -126,3 +130,6 @@ if dist_path.exists():
 
 # import pydevd_pycharm
 # pydevd_pycharm.settrace('localhost', port=5678, stdoutToServer=True, stderrToServer=True)
+
+if __name__ == "__main__":
+    get_images()
