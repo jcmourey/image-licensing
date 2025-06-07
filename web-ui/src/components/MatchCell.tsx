@@ -23,9 +23,16 @@ const MatchCell: React.FC<MatchCellProps> = ({
   return (
     <div className="flex flex-col items-center text-center">
       {matchingType && (
-        <span className="text-xs font-medium text-gray-500 mb-1 inline-block px-2 py-1 bg-gray-100 rounded">
-          {matchingType}
-        </span>
+        <div className="flex items-center gap-1 mb-1">
+          <span className="text-xs font-medium text-gray-500 inline-block px-2 py-1 bg-gray-100 rounded">
+            {matchingType}
+          </span>
+          {pageUrl === imageUrl && (
+            <span className="text-xs font-medium text-yellow-700 inline-block px-2 py-1 bg-yellow-100 rounded">
+              No webpage
+            </span>
+          )}
+        </div>
       )}
       <img
         src={imageUrl}

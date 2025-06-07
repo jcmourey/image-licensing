@@ -59,13 +59,14 @@ async def get_image_rows():
             sorted_matches = sorted(image.matches, key=match_sort_key)
             best_match = sorted_matches[0] if len(sorted_matches) > 0 else None
             license_url = best_match.license.urls[0] if best_match and best_match.license and len(best_match.license.urls) > 0 else None
-            attribution = attribution_explanation(license_url)
+            best_page_url = best_match.page_url if best_match else ""
+            attribution = attribution_explanation(license_url, best_page_url)
 
             row = ImageRow(
                 id=image.id,
                 thumbnail_url=thumbnail_api(image),
                 used_in=image.used_in,
-                best_page_url=best_match.page_url if best_match else "",
+                best_page_url=best_page_url,
                 image_url=best_match.image_url if best_match else "",
                 license_url=license_url,
                 attribution=attribution,
@@ -77,6 +78,19 @@ async def get_image_rows():
     # Sort rows by the specified priority order
     rows.sort(key=row_sort_key)
     return rows
+
+
+def contains_gov(page_url):
+    if page_url is None:
+        return False
+    return bool(re.search(r"\.gov($|[\/\.])", (page_url or "").lower()))
+
+
+def contains_canva(page_url):
+    if page_url is None:
+        return False
+    return "canva.com" in (page_url or "").lower()
+
 
 def row_sort_key(row):
     """
@@ -113,19 +127,26 @@ def row_sort_key(row):
     else:
         # No license, higher priority number (lower priority)
         license_priority = len(LICENSES_BY_TYPE) + 1
-    
+
+    # More accurately detect government domains by checking for .gov followed by /, ., or end of string
+    contains_gov_criteria = int(contains_gov(row.best_page_url))
+    contains_canva_criteria = int(contains_canva(row.best_page_url))
+
     # Return sort tuple: (has_no_match, is_visually_similar, license_priority)
     # Each component is ordered from highest to lowest priority
     return (
         has_no_match,
         is_visually_similar,
-        license_priority
+        license_priority,
+        -contains_canva_criteria,
+        -contains_gov_criteria
     )
-
 
 def match_sort_key(match):
     # Put "visually similar" at the end
     is_visually_similar = int((match.matching_type or "").lower() == "visually similar")
+    # if there is no page_url
+    no_page_url = int(match.page_url == match.image_url)
     # Primary: Priority in LICENSES_BY_TYPE by first license_url
     license_urls = getattr(match.license, "urls", []) if match.license else []
     license_type_priority = float("inf")
@@ -135,7 +156,9 @@ def match_sort_key(match):
             license_type_priority = idx
             break
     # Secondary: .gov in page_url
-    contains_gov = int(".gov" in (match.page_url or "").lower())
+    # More accurately detect government domains by checking for .gov followed by /, ., or end of string
+    contains_gov_criteria = int(contains_gov(match.page_url))
+    contains_canva_criteria = int(contains_canva(match.page_url))
     # Next priorities use the license_url (first)
     contains_license = int(bool(re.search(r"license|licensing", primary_license_url, re.I)))
     contains_terms = int("terms" in primary_license_url.lower())
@@ -143,8 +166,10 @@ def match_sort_key(match):
     # Sort: lower = higher priority
     return (
         is_visually_similar,
+        no_page_url,
         license_type_priority,
-        -contains_gov,
+        -contains_canva_criteria,
+        -contains_gov_criteria,
         -contains_license,
         -contains_terms,
         -contains_stock,
@@ -186,8 +211,12 @@ async def update_image_used_in(image_id: str, data: dict):
     
     
 
-def attribution_explanation(license_url):
+def attribution_explanation(license_url, page_url):
     if not license_url:
+        if contains_gov(page_url):
+            return "Government domain"
+        if contains_canva(page_url):
+            return "Canva domain"
         return "No license URL"
     for key, url_list in LICENSES_BY_TYPE.items():
         if license_url in url_list:
