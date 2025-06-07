@@ -1,7 +1,0 @@
-from backend.licensing.config_model import Model
-
-class Configuration(Model):
-    @classmethod
-    def load(cls, path="backend/config.json"):
-        with open(path, "r") as f:
-            return cls.model_validate_json(f.read())

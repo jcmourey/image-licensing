@@ -1,3 +1,6 @@
+from typing import List
+
+from sqlalchemy import func
 from sqlmodel import select
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
@@ -6,33 +9,45 @@ from fastapi.staticfiles import StaticFiles
 from pathlib import Path
 import os
 
+from backend.api.image_rows import get_image_rows
 from backend.google_apis.storage import Storage
 from backend.image_utils.thumbnail import ThumbnailService
+from backend.licensing.license_types import LICENSES_BY_TYPE, known_license_urls
 from backend.licensing.style_sheet import style_sheet
 from backend.google_apis.sheet_from_db import GoogleSheetFromDatabase
-from backend.licensing.config import Configuration
+from backend.config.config import Configuration
 from backend.model.image import Image
-from backend.model.image_response import ImageResponse
+from backend.api.image_response import ImageResponse
 from backend.model.license import License
 from backend.model.match import Match
 from backend.update.matches import update_images
 from backend.update.sync_images import sync_images
 from backend.update.thumbnails import update_thumbnails
-from backend.update.report import report
-from backend.update.licenses import update_licenses, update_approved_licenses, fix_unique_licenses
+from backend.update.licenses import update_licenses, update_approved_licenses, fix_unique_licenses, sort_license_urls
 from backend.database.repository import DatabaseRepository
+from backend.api import image_rows, comment
+import tldextract
 
+app = FastAPI(title="Image Management API")
 
-app = FastAPI()
-
-# Allow frontend dev server to call the API (only needed in dev mode)
+# Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://macstudiojeancharles.local:5173"],
+    allow_origins=["*"],  # In production, replace * with specific origins
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Include routers
+app.include_router(image_rows.router)
+app.include_router(comment.router)
+
+@app.get("/")
+async def root():
+    return {"message": "Image Management API is running"}
+# import pydevd_pycharm
+# pydevd_pycharm.settrace('localhost', port=5678, stdoutToServer=True, stderrToServer=True)
 
 # Example route
 @app.get("/api/health")
@@ -40,14 +55,68 @@ def health_check():
     print("Health check")
     return {"status": "ok"}
 
-BACKEND_PATH = Path("backend")
-DATA_PATH = BACKEND_PATH / "data"
-CONFIG_PATH = BACKEND_PATH / "config.json"
+
+@app.get("/api/root_domains")
+def root_domains():
+    database = DatabaseRepository()
+    with database.session_scope() as session:
+        statement = select(Match.page_url).where(Match.page_url is not None).distinct()
+        urls = session.exec(statement).all()
+        roots = set()
+        for url in urls:
+            ext = tldextract.extract(url)
+            if ext.domain and ext.suffix:
+                roots.add(f"{ext.domain}.{ext.suffix}")
+        return roots
+
+@app.get("/api/licenses", response_model=List[str])
+def get_distinct_licenses():
+    """
+    Returns a list of distinct license URLs from all License records in the database.
+    """
+    database = DatabaseRepository()
+    with database.session_scope() as session:
+        # Get all License rows
+        statement = select(License.urls).where(func.json_array_length(License.urls) > 0)
+        results = session.exec(statement).all()
+        # results is a list of lists
+        all_urls = set()
+        for urls in results:
+            all_urls.update(urls)
+        return list(all_urls)
+
+@app.get("/api/unlisted_licenses", response_model=List[str])
+def get_unlisted_licenses():
+    """
+    Returns a list of all distinct license URLs for images that do NOT have any known license URLs,
+    and that are themselves not known.
+    """
+    known_urls = known_license_urls()
+    database = DatabaseRepository()
+    with database.session_scope() as session:
+        # Get all images
+        images = session.exec(select(Image)).all()
+        unlisted_urls = set()
+
+        for image in images:
+            # Fetch all licenses for this image
+            statement = select(License).where(License.parent_image_id == image.id)
+            licenses = session.exec(statement).all()# Flatten license urls for this image
+            image_urls = {url for license in licenses for url in (license.urls or [])}
+            # If any known url in image_urls, skip this image
+            if any(url in known_urls for url in image_urls):
+                continue
+            # Add unlisted (unknown) urls
+            unlisted_urls.update(url for url in image_urls if url not in known_urls)
+
+        sorted_urls = sorted(unlisted_urls)
+        return sorted_urls
+
 
 @app.get("/api/images")
 def get_images():
     print("Fetching images from database")
-    database = DatabaseRepository(data_path=DATA_PATH)
+    database = DatabaseRepository()
     with database.session_scope() as session:
         statement = select(Image)
         images = session.exec(statement).all()
@@ -83,7 +152,7 @@ def get_images():
 # Assuming this is in your main API file where other endpoints are defined
 @app.get("/api/thumbnail/{image_name}")
 async def get_thumbnail(image_name: str):
-    thumbnail_service = ThumbnailService(None, DATA_PATH, None)
+    thumbnail_service = ThumbnailService()
     thumbnail_path = thumbnail_service.thumbnail_url(image_name)
     if not os.path.exists(thumbnail_path):
         raise HTTPException(status_code=404, detail="Thumbnail not found")
@@ -91,11 +160,11 @@ async def get_thumbnail(image_name: str):
 
 @app.get("/api/update")
 def update():
-    db_repo = DatabaseRepository(data_path=DATA_PATH)
-    config = Configuration.load(path=CONFIG_PATH)
+    db_repo = DatabaseRepository()
+    config = Configuration.load()
 
     storage_client = Storage(config.google_project_id, config.google_bucket_id)
-    thumbnail_service = ThumbnailService(storage_client, DATA_PATH, config.thumbnail)
+    thumbnail_service = ThumbnailService(storage_client, config.thumbnail)
     sync_images(storage_client, db_repo)
 
     # only call this when adding new images
@@ -114,7 +183,7 @@ def update():
 
 
 def generate_sheet(config, match_count):
-    """Generate Google Sheet from database"""
+    """Generate Google Sheet from the database"""
     print("Generating Google Sheet from database...")
     sheet_generator = GoogleSheetFromDatabase(config.spreadsheet, match_count)
     spreadsheet_id = sheet_generator.populate_sheet()
@@ -128,8 +197,6 @@ dist_path = Path(__file__).parent.parent / "web-ui" / "dist"
 if dist_path.exists():
     app.mount("/", StaticFiles(directory=dist_path, html=True), name="frontend")
 
-# import pydevd_pycharm
-# pydevd_pycharm.settrace('localhost', port=5678, stdoutToServer=True, stderrToServer=True)
 
 if __name__ == "__main__":
-    get_images()
+    get_image_rows()

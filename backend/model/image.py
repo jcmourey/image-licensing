@@ -13,11 +13,14 @@ class Image(SQLModel, table=True):
     web_entities_found: Optional[int] = Field(default=None)
     show: bool = Field(default=True)
     used_in: Optional[str] = Field(default=None)
-    selected_attribution: Optional[int] = Field(foreign_key="matches.id", index=True, nullable=False)
+    selected_match_id: Optional[int] = Field(foreign_key="matches.id", index=True, nullable=True)
     comment: Optional[str] = Field(default=None)
 
     # Relationship to matches
-    matches: List["Match"] = Relationship(back_populates="parent_image", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
+    matches: List["Match"] = Relationship(
+        back_populates="parent_image",
+        sa_relationship_kwargs={"foreign_keys": "[Match.parent_image_id]", "cascade": "all, delete-orphan"}
+    )
 
     @property
     def gcs_uri(self):
@@ -33,9 +36,6 @@ class Image(SQLModel, table=True):
     def has_license_text(self):
         return any(m.has_license_text for m in self.matches)
 
-    @property
-    def has_license_urls(self):
-        return any(m.has_license_urls for m in self.matches)
 
     def match_limit(self, search_config):
         if self.matches:

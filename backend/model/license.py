@@ -8,6 +8,7 @@ from typing import Optional, TYPE_CHECKING, Dict, List, Any
 from backend.google_apis.sheet import hyperlink
 from backend.html_utils.load import load_html
 from backend.html_utils.metadata import extract_metadata
+from ..licensing.license_types import LICENSES_BY_TYPE
 
 if TYPE_CHECKING:
     from .match import Match
@@ -22,6 +23,7 @@ class License(SQLModel, table=True):
     urls: List[str] = Field(default_factory=list, sa_column=Column(MutableList.as_mutable(JSON)))
     error: Optional[str] = None
     approved: bool = Field(default=False)
+    preferred_url: Optional[str] = Field(default=None)
 
     parent_match: Optional["Match"] = Relationship(back_populates="license")
 
@@ -77,3 +79,4 @@ class License(SQLModel, table=True):
             not self.urls,
             not self.meta_info
         )
+

@@ -1,9 +1,13 @@
+from typing import Tuple
+
 from PIL import Image
 import io
 from pathlib import Path
+from backend.constants import DATA_PATH
+
 
 class ThumbnailService:
-    def __init__(self, storage, data_path, config, image_type=".jpg"):
+    def __init__(self, storage=None, config=None, data_path=DATA_PATH, image_type=".jpg"):
         self.storage = storage
         self.data_path = data_path
         self.thumbnail_size = (config.width, config.height) if config else None

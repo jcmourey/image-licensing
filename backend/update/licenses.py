@@ -1,5 +1,10 @@
+import re
+
 from sqlalchemy import func
 from sqlmodel import select
+
+from backend.database.repository import DatabaseRepository
+from backend.licensing.license_types import LICENSES_BY_TYPE
 from backend.model.match import Match
 from backend.model.license import License
 
@@ -61,4 +66,46 @@ def update_approved_licenses(database):
                 updated_count += 1
 
         print(f"Updated 'approved' flag for {updated_count} licenses")
+
+def license_url_sort_key(url: str) -> tuple:
+    # 1. Priority order in LICENSES_BY_TYPE
+    type_priority = float('inf')
+    for idx, urls in enumerate(LICENSES_BY_TYPE.values()):
+        if url in urls:
+            type_priority = idx
+            break
+    # 2. Contains 'license' or 'licensing'
+    contains_license = int(bool(re.search(r'license|licensing', url, re.I)))
+    # 3. Contains 'terms'
+    contains_terms = int('terms' in url.lower())
+    # 4. Contains 'stock.adobe.com' or 'vectorstock'
+    contains_stock = int('stock.adobe.com' in url.lower() or 'vectorstock' in url.lower())
+    # Sorting: lower is higher priority (→ negative for booleans)
+    return (
+        type_priority,
+        -contains_license,
+        -contains_terms,
+        -contains_stock,
+        url
+    )
+
+def sort_license_urls(database):
+    with database.session_scope() as session:
+        # Find all licenses with Creative Commons URLs that aren't already approved
+        statement = select(License).where(func.json_array_length(License.urls) > 1)
+        licenses = session.exec(statement).all()
+
+        updated_count = 0
+        for license in licenses:
+            old_license_urls = license.urls
+            license.urls.sort(key=license_url_sort_key)
+            if old_license_urls != license.urls:
+                print(f"Sorted license URLs for license {license.id}: {old_license_urls} -> {license.urls}")
+            else:
+                print(f"License URLs already sorted for license {license.id}: {license.urls}")
+            session.add(license)
+            updated_count += 1
+
+        print(f"Sorted license URLs for {updated_count} licenses")
+
 

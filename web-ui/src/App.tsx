@@ -33,14 +33,17 @@
 // }
 
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom"
-import ImageList from "./pages/ImageList"
+import ImageRows from "./pages/ImageRows.tsx"
 
 export default function App() {
   return (
     <Router>
-      <Routes>
-        <Route path="/" element={<ImageList />} />
-      </Routes>
+      {/* Remove any default styles that might conflict with Tailwind */}
+      <div className="min-h-screen bg-white">
+        <Routes>
+          <Route path="/" element={<ImageRows />} />
+        </Routes>
+      </div>
     </Router>
   )
 }

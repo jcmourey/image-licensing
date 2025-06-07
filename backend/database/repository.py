@@ -1,4 +1,6 @@
 from sqlmodel import Session, create_engine, SQLModel, select
+
+from backend.constants import DATA_PATH
 from backend.model.image import Image
 from backend.model.license import License
 from backend.model.match import Match
@@ -7,7 +9,7 @@ from contextlib import contextmanager
 from backend.utilities.print import print_red
 
 class DatabaseRepository:
-    def __init__(self, data_path):
+    def __init__(self, data_path=DATA_PATH):
         self.db_path = data_path / Path("database.db")
         self.engine = create_engine(f"sqlite:///{self.db_path}", echo=False)
         SQLModel.metadata.create_all(self.engine)
@@ -28,42 +30,6 @@ class DatabaseRepository:
             raise
         finally:
             session.close()
-
-    def save_new_images(self, images: list[Image]):
-        with self.session_scope() as session:
-            session.add_all(images)
-            print(f"Saved {len(images)} images to database")
-
-    def save_image(self, image: Image):
-        with self.session_scope() as session:
-            session.add(image)
-            print(f"Saved {image.name} to database")
-
-    def delete_images(self, image_ids: list[str]):
-        with self.session_scope() as session:
-            statement = select(Image).where(Image.id.in_(image_ids))
-            images_to_delete = session.exec(statement).all()
-            for image in images_to_delete:
-                session.delete(image)
-        print(f"Deleted {len(image_ids)} images from database")
-
-    def fetch_image_ids(self) -> list[str]:
-        with self.session_scope() as session:
-            statement = select(Image.id)
-            image_ids = session.exec(statement).all()
-            return image_ids
-
-    def fetch_image_names(self) -> list[str]:
-        with self.session_scope() as session:
-            statement = select(Image.name)
-            image_ids = session.exec(statement).all()
-            return image_ids
-
-    def fetch_images(self) -> dict[str, Image]:
-        with self.session_scope() as session:
-            statement = select(Image)
-            images = session.exec(statement).all()
-            return {image.blob_id: image for image in images}
 
     # matches has a unique constraint on parent_image_id and page_url
     # make sure to only save new matches to avoid exceptions
@@ -94,33 +60,3 @@ class DatabaseRepository:
                     print(f"Web entities for image {image_id} are already up to date: requested={requested_web_entities}, found={found_web_entities}")
             else:
                 print_red(f"Image {image_id} not found in database")
-
-    def fetch_licenses_by_image_id(self, image_id: str) -> list[License]:
-        with self.session_scope() as session:
-            statement = select(License).where(License.parent_image_id == image_id)
-            licenses = session.exec(statement).all()
-            return licenses
-
-    def fetch_image_by_name(self, name: str) -> Image | None:
-        with self.session_scope() as session:
-            statement = select(Image).where(Image.name == name)
-            image = session.exec(statement).one_or_none()
-            return image
-
-    # ---- NOT USED YET ----
-    def fetch_images_by_blob_ids(self, ids) -> dict[str, Image]:
-        with self.session_scope() as session:
-            statement = select(Image).where(Image.blob_id.in_(ids))
-            images = session.exec(statement).all()
-            return {image.blob_id: image for image in images}
-
-    def fetch_images_with_matches(self) -> list[Image]:
-        with self.session_scope() as session:
-            statement = select(Image).where(Image.matches != None)
-            return session.exec(statement).all()
-
-    def fetch_images_with_license_url(self) -> list[Image]:
-        with self.session_scope() as session:
-            # This query pattern might need to be adjusted based on your actual relationship structure
-            statement = select(Image).join(Match).where(Match.license.has(url=None))
-            return session.exec(statement).all()

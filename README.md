@@ -1,5 +1,21 @@
 # Objective
+# Image Management Project
 
+## Type Synchronization
+
+This project uses a type-driven development approach to ensure consistency between the frontend and backend. The TypeScript interfaces in the frontend and the Python Pydantic models in the backend are kept in sync using the following approaches:
+
+### Manual Synchronization
+
+Currently, the types are defined in:
+- Frontend: `web-ui/src/components/types.ts`
+- Backend: `backend/models/types.py`
+
+When modifying these types, be sure to update both files to maintain consistency.
+
+### Automated Synchronization (Optional)
+
+For automatic type synchronization, we've included a script that generates TypeScript interfaces from Python Pydantic models:
 Given a series of images, attempt to find what websites the images came from and look up any available licensing information.
 
 Works with full or partial images.
@@ -53,5 +69,5 @@ After changing the structure of `config.json`:
 
 ```zsh
   jq -f backend/tools/make_json_template.jq backend/config.json > backend/config_template.json
-  datamodel-codegen --input backend/config.json --input-file-type json --output backend/licensing/config_model.py
+  datamodel-codegen --input backend/config.json --input-file-type json --output backend/config/generated_config_model.py
 ```

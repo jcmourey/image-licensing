@@ -1,4 +1,4 @@
-from backend.licensing.config_model import Width
+from backend.config.generated_config_model import Width
 from backend.google_apis.sheet_styling import GoogleSheetStyle
 
 def style_sheet(sheet, header_spec, sheet_style):

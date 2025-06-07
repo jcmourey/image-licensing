@@ -20,15 +20,13 @@ class Match(SQLModel, table=True):
         back_populates="parent_match",
         sa_relationship_kwargs={"uselist": False, "cascade": "all, delete-orphan"}
     )
-    parent_image: "Image" = Relationship(back_populates="matches")
-
+    parent_image: "Image" = Relationship(
+        back_populates="matches",
+        sa_relationship_kwargs={"foreign_keys": "[Match.parent_image_id]"}
+    )
     __table_args__ = (
         UniqueConstraint("parent_image_id", "page_url", name="uix_parent_image_image_url"),
     )
-
-    @property
-    def has_license_urls(self):
-        return bool(self.license.urls)
 
     @property
     def sort_key(self):

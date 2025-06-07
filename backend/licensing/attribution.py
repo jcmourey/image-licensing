@@ -1,6 +1,6 @@
 import os
 import tldextract
-from config import Configuration
+from backend.config.config import Configuration
 from backend.google_apis.credentials import get_creds
 from backend.google_apis.drive import upload_html_and_thumbs_to_drive
 from gspread import authorize
