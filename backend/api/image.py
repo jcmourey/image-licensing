@@ -6,7 +6,7 @@ from backend.model.image import Image
 
 router = APIRouter()
 
-@router.put("/api/image/{image_id:path}/hide", response_model=dict)
+@router.post("/api/image/{image_id:path}/hide", response_model=dict)
 def hide_image(image_id: str):
     """
     Hides an image by setting its show field to false.

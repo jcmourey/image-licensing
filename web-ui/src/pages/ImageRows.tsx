@@ -130,102 +130,27 @@ export const ImageRows = () => {
       setUsedInOptions(["Website", "Blog", "Documentation", "Marketing", "Not Used"]);
     }
   };
-  
-  // Direct selection and save function for option buttons
-  const selectAndSave = async (id: string, value: string) => {
-    console.log(`[selectAndSave] Direct save with value: "${value}" (${typeof value})`);
-    
-    setSaveStatus({id, status: 'saving'});
-    
+
+  // Hide image
+  const hideImage = async (imageId: string) => {
     try {
-      // Encode the ID to handle slashes and special characters
-      const encodedId = encodeURIComponent(id);
-      const endpoint = `/api/image/${encodedId}/used_in`;
-      
-      // Log what we're about to send
-      console.log(`[selectAndSave] Sending to API: ${endpoint}`);
-      console.log(`[selectAndSave] Value: "${value}"`);
-      
-      // Create the request body directly with the provided value
-      const requestBody = JSON.stringify({ used_in: value });
-      console.log(`[selectAndSave] Request body: ${requestBody}`);
-      
+      const encodedId = encodeURIComponent(imageId);
+      const endpoint = `/api/image/${encodedId}/hide`;
       const response = await fetch(endpoint, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: requestBody,
+        method: 'POST',
       });
-      
-      // Log the response information
-      console.log(`[selectAndSave] Response status: ${response.status} ${response.statusText}`);
-      try {
-        const responseText = await response.clone().text();
-        console.log(`[selectAndSave] Response body: ${responseText}`);
-      } catch (err) {
-        console.log(`[selectAndSave] Could not read response body: ${err}`);
+
+      if (!response.ok) {
+        throw new Error(`Failed to hide image: ${response.statusText}`);
       }
-      
-      if (response.ok) {
-        // Update local state to match what we sent
-        setUsedInText(value);
-        
-        // Update the row data
-        setImageRows(prev => 
-          prev.map(row => 
-            row.id === id ? { ...row, used_in: value } : row
-          )
-        );
-        
-        // If we updated a used_in value, refresh the used_in options to include new values
-        setTimeout(async () => {
-          await fetchUsedInOptions();
-        }, 500);
-        
-        // Set success status
-        setSaveStatus({id, status: 'success'});
-        console.log(`[selectAndSave] Successfully saved: "${value}"`);
-        
-        // Close edit mode after successful save
-        setEditingFieldData(prev => ({
-          ...prev,
-          id: null,
-          fieldName: null
-        }));
-        
-        // Clear status after a delay
-        setTimeout(() => {
-          setSaveStatus({id: '', status: null});
-        }, 2000);
-      } else {
-        console.error(`[selectAndSave] Error saving: ${response.statusText}`);
-        setSaveStatus({id, status: 'error'});
-        
-        // Clear error status after longer delay
-        setTimeout(() => {
-          setSaveStatus({id: '', status: null});
-        }, 5000);
-      }
+      setImageRows(prev => prev.filter(row => row.id !== imageId)); // update the visible rows in state
+
     } catch (err) {
-      console.error(`[selectAndSave] Exception:`, err);
-      
-      // Force console display by using console.warn as well
-      console.warn(`[selectAndSave] Error details:`, {
-        error: err,
-        endpoint,
-        requestBody: { used_in: value },
-        id
-      });
-      
-      // Show error status
-      setSaveStatus({id, status: 'error'});
-      setTimeout(() => {
-        setSaveStatus({id: '', status: null});
-      }, 5000); // Give more time to see the error message
+      console.error(`Failed to hide image: ${imageId}`, err);
     }
+
   };
-  
+
   // Save field to backend
   const saveField = async (id: string, fieldName: 'comment' | 'usedIn') => {
     setSaveStatus({id, status: 'saving'});
@@ -437,11 +362,11 @@ export const ImageRows = () => {
               saveStatus={saveStatus}
               onShowPopup={showPopup}
               onHidePopup={hidePopup}
+              onHideImage={hideImage}
               onCommentChange={setCommentText}
               onUsedInChange={setUsedInText}
               onToggleEdit={toggleEditField}
               onSaveField={saveField}
-              onSelectAndSave={selectAndSave}
               // Temporarily remove onImageDeleted prop to fix rendering
               // onImageDeleted={handleImageDeleted}
             />

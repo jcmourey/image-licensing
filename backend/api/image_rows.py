@@ -7,9 +7,9 @@ from pydantic import BaseModel
 from sqlmodel import select
 
 from backend.database.repository import DatabaseRepository
-from backend.licensing.license_types import LICENSES_BY_TYPE, attribution_explanation, contains_gov, contains_canva
+from backend.licensing.license_types import LICENSES_BY_TYPE, attribution_explanation, contains_gov, contains_canva, \
+    contains_org
 from backend.model.image import Image
-from backend.model.match import Match
 from backend.utilities.url import get_domain_without_suffix
 
 
@@ -123,6 +123,7 @@ def row_sort_key(row):
     # More accurately detect government domains by checking for .gov followed by /, ., or end of string
     contains_gov_criteria = int(contains_gov(row.best_page_url))
     contains_canva_criteria = int(contains_canva(row.best_page_url))
+    contains_org_criteria = int(contains_org(row.best_page_url))
 
     # Return sort tuple: (has_no_match, is_visually_similar, license_priority)
     # Each component is ordered from highest to lowest priority
@@ -130,6 +131,7 @@ def row_sort_key(row):
         has_no_match,
         is_visually_similar,
         license_priority,
+        -contains_org_criteria,
         -contains_canva_criteria,
         -contains_gov_criteria
     )
@@ -151,6 +153,7 @@ def match_sort_key(match):
     # More accurately detect government domains by checking for .gov followed by /, ., or end of string
     contains_gov_criteria = int(contains_gov(match.page_url))
     contains_canva_criteria = int(contains_canva(match.page_url))
+    contains_org_criteria = int(contains_org(match.page_url))
     # Next priorities use the license_url (first)
     contains_license = int(bool(re.search(r"license|licensing", primary_license_url, re.I)))
     contains_terms = int("terms" in primary_license_url.lower())
@@ -160,6 +163,7 @@ def match_sort_key(match):
         is_visually_similar,
         no_page_url,
         license_type_priority,
+        -contains_org_criteria,
         -contains_canva_criteria,
         -contains_gov_criteria,
         -contains_license,

@@ -1,11 +1,9 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
-import tailwindcss from '@tailwindcss/vite'
 
 export default defineConfig({
   plugins: [
     react(), // Default React plugin configuration
-    tailwindcss(), // Add Tailwind CSS v4 plugin
   ],
   define: {
     // Define environment variables with default values
@@ -24,11 +22,11 @@ export default defineConfig({
             console.log('Proxy error:', err);
           });
           
-          proxy.on('proxyReq', (proxyReq, req, _res) => {
+          proxy.on('proxyReq', (_proxyReq, req, _res) => {
             console.log(`📤 REQUEST: ${req.method} ${req.url}`);
             
             // Log request body for PUT/POST requests that might contain used_in data
-            if ((req.method === 'PUT' || req.method === 'POST') && req.url.includes('used_in')) {
+            if ((req.method === 'PUT' || req.method === 'POST') && req.url && req.url.includes('used_in')) {
               let body = '';
               req.on('data', (chunk) => {
                 body += chunk;
@@ -50,7 +48,7 @@ export default defineConfig({
             console.log(`📥 RESPONSE: ${req.method} ${req.url} - Status: ${proxyRes.statusCode}`);
             
             // Log response body for requests related to used_in
-            if (req.url.includes('used_in')) {
+            if (req.url &&req.url.includes('used_in')) {
               let body = '';
               proxyRes.on('data', (chunk) => {
                 body += chunk;

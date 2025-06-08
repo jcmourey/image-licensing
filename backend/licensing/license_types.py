@@ -52,6 +52,8 @@ def attribution_explanation(license_url, page_url):
             return "Government domain"
         if contains_canva(page_url):
             return "Canva domain"
+        if contains_org(page_url):
+            return "Non-Profit domain"
         return "No license URL"
     for key, url_list in LICENSES_BY_TYPE.items():
         if license_url in url_list:
@@ -59,10 +61,18 @@ def attribution_explanation(license_url, page_url):
     return license_url
 
 
-def contains_gov(page_url):
+def contains_suffix(page_url, suffix):
     if page_url is None:
         return False
-    return bool(re.search(r"\.gov($|[\/\.])", (page_url or "").lower()))
+    return bool(re.search(suffix + r"($|[\/\.])", (page_url or "").lower()))
+
+
+def contains_gov(page_url):
+    return contains_suffix(page_url, ".gov")
+
+
+def contains_org(page_url):
+    return contains_suffix(page_url, ".org")
 
 
 def contains_canva(page_url):
