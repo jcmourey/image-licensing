@@ -92,85 +92,62 @@ def row_sort_key(row):
     3. Images with no licenses
     4. Images where the matching_type is "visually similar"
     5. Images with no matches
-    
+
     Returns a tuple where earlier elements have higher precedence in sorting.
     Lower values come first in the sorted result.
     """
     # Check if there's no match (no best_page_url)
-    has_no_match = not row.best_page_url
-    
-    # Check if it's a visually similar match
-    is_visually_similar = (row.matching_type or "").lower() == "visually similar"
-    
-    # Determine license type priority
-    license_priority = float("inf")  # Default to lowest priority
-    has_license = bool(row.license_url)
-    
-    if has_license:
-        # Check if it's a known license type
-        for idx, (license_type, urls) in enumerate(LICENSES_BY_TYPE.items()):
-            if row.license_url in urls:
-                license_priority = idx
-                break
-        
-        # If not found in LICENSES_BY_TYPE, it's an unknown license
-        if license_priority == float("inf"):
-            license_priority = len(LICENSES_BY_TYPE)  # Just after known licenses
-    else:
-        # No license, higher priority number (lower priority)
-        license_priority = len(LICENSES_BY_TYPE) + 1
+    has_a_match = int(row.best_page_url is not None)
+    license_url = row.license_url if row.license_url is not None else ""
 
-    # More accurately detect government domains by checking for .gov followed by /, ., or end of string
-    contains_gov_criteria = int(contains_gov(row.best_page_url))
-    contains_canva_criteria = int(contains_canva(row.best_page_url))
-    contains_org_criteria = int(contains_org(row.best_page_url))
-
-    # Return sort tuple: (has_no_match, is_visually_similar, license_priority)
-    # Each component is ordered from highest to lowest priority
     return (
-        has_no_match,
-        is_visually_similar,
-        license_priority,
-        -contains_org_criteria,
-        -contains_canva_criteria,
-        -contains_gov_criteria
+        -has_a_match,
+        sort_key(row.best_page_url, row.image_url, license_url, row.matching_type),
     )
 
+
 def match_sort_key(match):
-    # Put "visually similar" at the end
-    is_visually_similar = int((match.matching_type or "").lower() == "visually similar")
-    # if there is no page_url
-    no_page_url = int(match.page_url == match.image_url)
-    # Primary: Priority in LICENSES_BY_TYPE by first license_url
     license_urls = getattr(match.license, "urls", []) if match.license else []
-    license_type_priority = float("inf")
     primary_license_url = license_urls[0] if license_urls else ""
+    return sort_key(match.page_url, match.image_url, primary_license_url, match.matching_type)
+
+
+def sort_key(page_url, image_url, license_url, matching_type):
+    # Put "visually similar" at the end
+    not_just_visually_similar = int((matching_type or "").lower() != "visually similar")
+    # if there is no page_url
+    has_a_page_url = int(page_url != image_url)
+    # Primary: Priority in LICENSES_BY_TYPE by first license_url
+
+    license_priority = float("inf")
     for idx, urls in enumerate(LICENSES_BY_TYPE.values()):
-        if primary_license_url in urls:
-            license_type_priority = idx
+        if license_url in urls:
+            license_priority = idx
             break
     # Secondary: .gov in page_url
     # More accurately detect government domains by checking for .gov followed by /, ., or end of string
-    contains_gov_criteria = int(contains_gov(match.page_url))
-    contains_canva_criteria = int(contains_canva(match.page_url))
-    contains_org_criteria = int(contains_org(match.page_url))
+    contains_gov_criteria = int(contains_gov(page_url))
+    contains_canva_criteria = int(contains_canva(page_url))
+    contains_org_criteria = int(contains_org(page_url))
     # Next priorities use the license_url (first)
-    contains_license = int(bool(re.search(r"license|licensing", primary_license_url, re.I)))
-    contains_terms = int("terms" in primary_license_url.lower())
-    contains_stock = int("stock.adobe.com" in primary_license_url.lower() or "vectorstock" in primary_license_url.lower())
+    contains_license = int(bool(re.search(r"license|licensing", license_url, re.I)))
+    contains_terms = int("terms" in license_url.lower() and license_url != "/terms")
+    contains_stock = int(
+        "stock.adobe.com" in license_url.lower() or "vectorstock" in license_url.lower())
     # Sort: lower = higher priority
     return (
-        is_visually_similar,
-        no_page_url,
-        license_type_priority,
-        -contains_org_criteria,
+        -not_just_visually_similar,
+        -has_a_page_url,
+        license_priority,
         -contains_canva_criteria,
-        -contains_gov_criteria,
         -contains_license,
         -contains_terms,
+        -contains_gov_criteria,
+        -contains_org_criteria,
         -contains_stock,
-        match.page_url or ""
+        page_url or ""
     )
+
 
 @router.put("/api/image/{image_id}/used_in", response_model=dict)
 async def update_image_used_in(image_id: str, data: dict):

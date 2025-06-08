@@ -32,7 +32,8 @@ def update_image_comment(image_id: str, comment_data: CommentUpdate):
         if not image:
             raise HTTPException(status_code=404, detail="Image not found")
 
-        image.comment = comment_data.comment
+        new_comment = comment_data.comment
+        image.comment = new_comment if new_comment.strip() != "" else None
         session.add(image)
         session.commit()
 

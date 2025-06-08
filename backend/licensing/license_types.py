@@ -54,7 +54,7 @@ def attribution_explanation(license_url, page_url):
             return "Canva domain"
         if contains_org(page_url):
             return "Non-Profit domain"
-        return "No license URL"
+        return None
     for key, url_list in LICENSES_BY_TYPE.items():
         if license_url in url_list:
             return key

@@ -8,7 +8,7 @@ interface AttributionCellProps {
 
 const AttributionCell: React.FC<AttributionCellProps> = ({ attribution, licenseUrl, licensed_by }) => {
   // Determine the display text
-  const displayText = attribution || 'No license information';
+  const displayText = attribution || 'Unknown';
 
   // Function to format URL for display by adding word breaks
   const formatUrlForDisplay = (url: string): string => {
