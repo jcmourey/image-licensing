@@ -24,6 +24,7 @@ def update_licenses(database):
             new_license = License.extract_page_license_metadata(match)
             if new_license is not None:
                 new_license.urls = list(dict.fromkeys(new_license.urls))
+                new_license.urls.sort(key=license_url_sort_key)
                 new_license.approved = new_license.is_approved
                 session.add(new_license)
                 session.commit()
@@ -50,24 +51,13 @@ def fix_unique_licenses(database):
         print(f"Fixed {fixed_count} duplicate license URLs")
 
 
-def update_approved_licenses(database):
-    with database.session_scope() as session:
-        # Find all licenses with Creative Commons URLs that aren't already approved
-        statement = select(License).where(
-            License.approved == False
-        )
-        licenses = session.exec(statement).all()
-
-        updated_count = 0
-        for license in licenses:
-            if license.is_approved:
-                license.approved = True
-                session.add(license)
-                updated_count += 1
-
-        print(f"Updated 'approved' flag for {updated_count} licenses")
-
 def license_url_sort_key(url: str) -> tuple:
+    # 0. Rule out 'http://creativecommons.org/licenses/publicdomain/' which is just a list of their licenses, not an actual license
+    not_a_license = int(url in [
+        "https://creativecommons.org/public-domain/",
+        "http://creativecommons.org/licenses/publicdomain/",
+        "https://creativecommons.org/licenses/publicdomain/",
+    ])
     # 1. Priority order in LICENSES_BY_TYPE
     type_priority = float('inf')
     for idx, urls in enumerate(LICENSES_BY_TYPE.values()):
@@ -82,6 +72,7 @@ def license_url_sort_key(url: str) -> tuple:
     contains_stock = int('stock.adobe.com' in url.lower() or 'vectorstock' in url.lower())
     # Sorting: lower is higher priority (→ negative for booleans)
     return (
+        not_a_license,
         type_priority,
         -contains_license,
         -contains_terms,
@@ -89,7 +80,7 @@ def license_url_sort_key(url: str) -> tuple:
         url
     )
 
-def sort_license_urls(database):
+def sort_license_urls(database, mock: bool = False):
     with database.session_scope() as session:
         # Find all licenses with Creative Commons URLs that aren't already approved
         statement = select(License).where(func.json_array_length(License.urls) > 1)
@@ -102,8 +93,10 @@ def sort_license_urls(database):
             if old_license_urls != license.urls:
                 print(f"Sorted license URLs for license {license.id}: {old_license_urls} -> {license.urls}")
             else:
-                print(f"License URLs already sorted for license {license.id}: {license.urls}")
-            session.add(license)
+                if not mock:
+                    print(f"License URLs already sorted for license {license.id}: {license.urls}")
+            if not mock:
+                session.add(license)
             updated_count += 1
 
         print(f"Sorted license URLs for {updated_count} licenses")

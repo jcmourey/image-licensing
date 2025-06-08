@@ -83,6 +83,7 @@ const ImageRow: React.FC<ImageRowProps> = ({
         <AttributionCell
           attribution={row.attribution}
           licenseUrl={row.license_url}
+          licensed_by={row.licensed_by}
         />
       </div>
       

@@ -15,8 +15,8 @@ services:
       context: .
       dockerfile: Dockerfile.frontend
     volumes:
-      - ./web-ui:/app/web-ui
-      - /app/web-ui/node_modules
+      - ./web-ui:/web-ui
+      - /web-ui/node_modules
     ports:
       - "5173:5173"
     depends_on:

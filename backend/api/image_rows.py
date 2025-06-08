@@ -7,9 +7,10 @@ from pydantic import BaseModel
 from sqlmodel import select
 
 from backend.database.repository import DatabaseRepository
-from backend.licensing.license_types import LICENSES_BY_TYPE
+from backend.licensing.license_types import LICENSES_BY_TYPE, attribution_explanation, contains_gov, contains_canva
 from backend.model.image import Image
 from backend.model.match import Match
+from backend.utilities.url import get_domain_without_suffix
 
 
 class ImageRow(BaseModel):
@@ -25,6 +26,7 @@ class ImageRow(BaseModel):
     image_url: Optional[str]
     license_url: Optional[str]
     attribution: Optional[str]
+    licensed_by: Optional[str]
     matching_type: Optional[str]
     comment: Optional[str]
 
@@ -61,6 +63,7 @@ async def get_image_rows():
             license_url = best_match.license.urls[0] if best_match and best_match.license and len(best_match.license.urls) > 0 else None
             best_page_url = best_match.page_url if best_match else ""
             attribution = attribution_explanation(license_url, best_page_url)
+            licensed_by = get_domain_without_suffix(license_url)
 
             row = ImageRow(
                 id=image.id,
@@ -70,6 +73,7 @@ async def get_image_rows():
                 image_url=best_match.image_url if best_match else "",
                 license_url=license_url,
                 attribution=attribution,
+                licensed_by=licensed_by,
                 matching_type=best_match.matching_type if best_match else "",
                 comment=image.comment
             )
@@ -78,18 +82,6 @@ async def get_image_rows():
     # Sort rows by the specified priority order
     rows.sort(key=row_sort_key)
     return rows
-
-
-def contains_gov(page_url):
-    if page_url is None:
-        return False
-    return bool(re.search(r"\.gov($|[\/\.])", (page_url or "").lower()))
-
-
-def contains_canva(page_url):
-    if page_url is None:
-        return False
-    return "canva.com" in (page_url or "").lower()
 
 
 def row_sort_key(row):
@@ -209,16 +201,4 @@ async def update_image_used_in(image_id: str, data: dict):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to update used_in: {str(e)}")
     
-    
 
-def attribution_explanation(license_url, page_url):
-    if not license_url:
-        if contains_gov(page_url):
-            return "Government domain"
-        if contains_canva(page_url):
-            return "Canva domain"
-        return "No license URL"
-    for key, url_list in LICENSES_BY_TYPE.items():
-        if license_url in url_list:
-            return key
-    return license_url

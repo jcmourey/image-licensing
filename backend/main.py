@@ -22,10 +22,12 @@ from backend.model.match import Match
 from backend.update.matches import update_images
 from backend.update.sync_images import sync_images
 from backend.update.thumbnails import update_thumbnails
-from backend.update.licenses import update_licenses, update_approved_licenses, fix_unique_licenses, sort_license_urls
+from backend.update.licenses import update_licenses, fix_unique_licenses, sort_license_urls
 from backend.database.repository import DatabaseRepository
 from backend.api import image_rows, comment, used_in, image
 import tldextract
+
+from backend.utilities.url import get_domain
 
 app = FastAPI(title="Image Management API")
 
@@ -63,12 +65,7 @@ def root_domains():
     with database.session_scope() as session:
         statement = select(Match.page_url).where(Match.page_url is not None).distinct()
         urls = session.exec(statement).all()
-        roots = set()
-        for url in urls:
-            ext = tldextract.extract(url)
-            if ext.domain and ext.suffix:
-                roots.add(f"{ext.domain}.{ext.suffix}")
-        return roots
+        return set(get_domain(url) for url in urls)
 
 @app.get("/api/licenses", response_model=List[str])
 def get_distinct_licenses():
@@ -138,7 +135,6 @@ def update():
 
     # one time thing:
     fix_unique_licenses(db_repo)
-    update_approved_licenses(db_repo)
 
     update_images(db_repo, max_search_results=config.max_search_results)
     update_licenses(db_repo)
@@ -163,4 +159,4 @@ if dist_path.exists():
 
 
 if __name__ == "__main__":
-    get_image_rows()
+    sort_license_urls(DatabaseRepository(), mock=True)

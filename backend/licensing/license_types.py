@@ -1,11 +1,11 @@
+import re
+
 LICENSES_BY_TYPE = {
     # No attribution required (CC0, public domain marks)
     "No attribution required (CC0, public domain marks)": [
         "https://creativecommons.org/publicdomain/zero/1.0/",
-        "https://creativecommons.org/public-domain/",
         "https://creativecommons.org/publicdomain/mark/1.0/",
-        "http://creativecommons.org/licenses/publicdomain/",
-        "https://creativecommons.org/licenses/publicdomain/",
+        "https://negativespace.co/license/",
     ],
 
     # Attribution only (CC BY)
@@ -24,7 +24,7 @@ LICENSES_BY_TYPE = {
         "https://creativecommons.org/licenses/by-sa/4.0/?ref=chooser-v1",
         "https://creativecommons.org/licenses/by-sa/4.0/deed.de",
         "https://creativecommons.org/licenses/by-sa/2.0/",
-        "https://www.fandom.com/licensing"
+        "https://www.fandom.com/licensing",
     ],
 
     # Attribution + NonCommercial (CC BY-NC)
@@ -45,15 +45,31 @@ LICENSES_BY_TYPE = {
     ],
 }
 
-def get_license_attribution(url: str) -> str:
-    """
-    Given a Creative Commons license URL, returns the full attribution explanation.
-    If the URL is not recognized, returns 'Unknown or unsupported license URL'.
-    """
-    for attr, urls in LICENSES_BY_TYPE.items():
-        if url in urls:
-            return attr
-    return "Unknown or unsupported license URL"
+
+def attribution_explanation(license_url, page_url):
+    if not license_url:
+        if contains_gov(page_url):
+            return "Government domain"
+        if contains_canva(page_url):
+            return "Canva domain"
+        return "No license URL"
+    for key, url_list in LICENSES_BY_TYPE.items():
+        if license_url in url_list:
+            return key
+    return license_url
+
+
+def contains_gov(page_url):
+    if page_url is None:
+        return False
+    return bool(re.search(r"\.gov($|[\/\.])", (page_url or "").lower()))
+
+
+def contains_canva(page_url):
+    if page_url is None:
+        return False
+    return "canva.com" in (page_url or "").lower()
+
 
 def known_license_urls() -> set[str]:
     return set(url for urls in LICENSES_BY_TYPE.values() for url in urls)

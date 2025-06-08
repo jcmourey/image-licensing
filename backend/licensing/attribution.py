@@ -97,12 +97,6 @@ def generate_attribution_html_from_images(images, folder_id):
     HTML_HEADER(attributions, thumb_paths,folder_id)
 
 
-def get_domain(url):
-    ext = tldextract.extract(url)
-    # ext.domain: 'creativecommons', ext.suffix: 'org'
-    if ext.domain and ext.suffix:
-        return f"{ext.domain}.{ext.suffix}"
-    return url  # fallback
 
 
 def generate_attribution_html_with_thumbnails(attributions, thumb_urls, folder_id):

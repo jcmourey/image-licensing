@@ -1,0 +1,46 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    environment:
+      - PYTHONPATH=/app
+      - PUID=1028
+      - PGID=65537
+      - TZ=Europe/Paris
+      - UMASK=022
+      - VERSION=docker
+    volumes:
+      - .:/app
+    ports:
+      - "8000:8000"
+    security_opt:
+      - no-new-privileges:true
+    restart: always
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    environment:
+      - HOST=0.0.0.0
+      - PUID=1028
+      - PGID=65537
+      - TZ=Europe/Paris
+      - UMASK=022
+      - VERSION=docker
+    volumes:
+      - ./web-ui:/web-ui
+      - /web-ui/node_modules
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+    labels:
+      - flame.type=application
+      - flame.name=image-licensing
+      - flame.url=http://192.168.1.7:5173
+      - flame.icon=https://cdn-icons-png.flaticon.com/512/1728/1728431.png
+    security_opt:
+      - no-new-privileges:true
+    restart: always

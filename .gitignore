@@ -4,6 +4,6 @@ backend/internals
 .idea
 __pycache__
 backend/data
-thumbnails
-web-ui/node_modules/
+backend/data/thumbnails
+/node_modules
 web-ui/dist/

@@ -9,6 +9,7 @@ export interface ImageRow {
   image_url: string | null;
   license_url: string | null;
   attribution: string | null;
+  licensed_by: string | null;
   matching_type: string | null;
   comment: string | null;
 }

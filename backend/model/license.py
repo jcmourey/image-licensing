@@ -8,7 +8,7 @@ from typing import Optional, TYPE_CHECKING, Dict, List, Any
 from backend.google_apis.sheet import hyperlink
 from backend.html_utils.load import load_html
 from backend.html_utils.metadata import extract_metadata
-from ..licensing.license_types import LICENSES_BY_TYPE
+from ..licensing.license_types import LICENSES_BY_TYPE, known_license_urls
 
 if TYPE_CHECKING:
     from .match import Match
@@ -58,11 +58,7 @@ class License(SQLModel, table=True):
 
     @property
     def is_approved(self):
-        return len(self.approved_license_urls) > 0
-
-    @property
-    def approved_license_urls(self):
-        return [url for url in self.urls if "creativecommons.org" in url or "fandom.com/licensing" in url]
+        return self.urls[0] in known_license_urls() if len(self.urls) > 0 else False
 
     @property
     def sheet_cell_representation(self):
@@ -79,4 +75,3 @@ class License(SQLModel, table=True):
             not self.urls,
             not self.meta_info
         )
-
