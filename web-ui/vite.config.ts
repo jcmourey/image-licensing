@@ -71,7 +71,7 @@ export default defineConfig({
         },
       }
     },
-    allowedHosts: ['macstudiojeancharles.local', 'localhost'],
+    allowedHosts: ['macstudiojeancharles.local', 'localhost', 'ds1821.local'],
     // Add HMR settings
     hmr: {
       overlay: true,
