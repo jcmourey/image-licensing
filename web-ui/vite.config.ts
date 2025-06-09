@@ -15,60 +15,41 @@ export default defineConfig({
         target: 'http://backend:8000',
         changeOrigin: true,
         secure: false,
-        // Don't rewrite the path to keep the /api prefix
-        // rewrite: (path) => path.replace(/^\/api/, '/api'),
-        configure: (proxy, _options) => {
-          proxy.on('error', (err, _req, _res) => {
+        configure: (proxy) => {
+          proxy.on('error', (err) => {
             console.log('Proxy error:', err);
           });
-          
-          proxy.on('proxyReq', (_proxyReq, req, _res) => {
+
+          proxy.on('proxyReq', (_, req) => {
             console.log(`📤 REQUEST: ${req.method} ${req.url}`);
-            
-            // Log request body for PUT/POST requests that might contain used_in data
-            if ((req.method === 'PUT' || req.method === 'POST') && req.url && req.url.includes('used_in')) {
+
+            if (req.method === 'PUT' || req.method === 'POST' || req.method === 'PATCH') {
               let body = '';
-              req.on('data', (chunk) => {
-                body += chunk;
-              });
-              
+              req.on('data', chunk => (body += chunk));
               req.on('end', () => {
                 try {
-                  const jsonBody = JSON.parse(body);
-                  console.log(`📤 REQUEST BODY: ${JSON.stringify(jsonBody, null, 2)}`);
-                  console.log(`📤 used_in value: "${jsonBody.used_in}" (${typeof jsonBody.used_in})`);
-                } catch (e) {
-                  console.log(`📤 REQUEST BODY: Unable to parse JSON - ${body}`);
+                  console.log('📤 REQUEST BODY:', JSON.stringify(JSON.parse(body), null, 2));
+                } catch {
+                  console.log('📤 REQUEST BODY:', body || '[unavailable]');
                 }
               });
             }
           });
-          
-          proxy.on('proxyRes', (proxyRes, req, _res) => {
+
+          proxy.on('proxyRes', (proxyRes, req) => {
             console.log(`📥 RESPONSE: ${req.method} ${req.url} - Status: ${proxyRes.statusCode}`);
-            
-            // Log response body for requests related to used_in
-            if (req.url &&req.url.includes('used_in')) {
-              let body = '';
-              proxyRes.on('data', (chunk) => {
-                body += chunk;
-              });
-              
-              proxyRes.on('end', () => {
-                try {
-                  if (body) {
-                    const jsonBody = JSON.parse(body);
-                    console.log(`📥 RESPONSE BODY: ${JSON.stringify(jsonBody, null, 2)}`);
-                  } else {
-                    console.log(`📥 RESPONSE BODY: Empty response`);
-                  }
-                } catch (e) {
-                  console.log(`📥 RESPONSE BODY: ${body}`);
-                }
-              });
-            }
+
+            // let body = '';
+            // proxyRes.on('data', chunk => (body += chunk));
+            // proxyRes.on('end', () => {
+            //   try {
+            //     console.log('📥 RESPONSE BODY:', body ? JSON.stringify(JSON.parse(body), null, 2) : '[empty]');
+            //   } catch {
+            //     console.log('📥 RESPONSE BODY:', body || '[unavailable]');
+            //   }
+            // });
           });
-        },
+        }
       }
     },
     allowedHosts: ['macstudiojeancharles.local', 'localhost', 'ds1821.local'],

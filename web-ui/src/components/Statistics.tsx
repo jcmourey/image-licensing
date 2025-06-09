@@ -1,6 +1,6 @@
 import React from "react";
 import { useMemo } from "react";
-import { type ImageRow  } from './generated-types';
+import type { ImageRow  } from '../types/generated';
 
 interface StatisticsProps {
   imageRows: ImageRow[];
@@ -20,6 +20,8 @@ const Statistics: React.FC<StatisticsProps> = ({ imageRows }) => {
 
         // Count comments
         const comments: Record<string, number> = {};
+
+        let replacementImages: number = 0;
 
         for (const row of imageRows) {
             // Attribution (License type or explanation string)
@@ -43,9 +45,15 @@ const Statistics: React.FC<StatisticsProps> = ({ imageRows }) => {
             if (comment != null && comment !== "") {
                 comments[comment] = (comments[comment] || 0) + 1;
             }
+
+            // Replacement Image
+            if (row.replacement_page_url != null) {
+                replacementImages += 1;
+            }
+
         }
 
-        return {total, attributions, usedIn, comments};
+        return {total, attributions, usedIn, comments, replacementImages};
     }, [imageRows]);
 
     return (
@@ -94,6 +102,7 @@ const Statistics: React.FC<StatisticsProps> = ({ imageRows }) => {
                             ))}
                         </ul>
                     </div>
+
                     <div className="mt-6">
                         <strong>Comments:</strong>
                         <ul className="list-disc ml-6">
@@ -105,6 +114,10 @@ const Statistics: React.FC<StatisticsProps> = ({ imageRows }) => {
                                 </li>
                             ))}
                         </ul>
+                    </div>
+
+                    <div className="mt-6">
+                        <strong>Replacement images: {summaryStats.replacementImages}</strong>
                     </div>
                 </div>
             </div>

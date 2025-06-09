@@ -23,9 +23,12 @@ class License(SQLModel, table=True):
     urls: List[str] = Field(default_factory=list, sa_column=Column(MutableList.as_mutable(JSON)))
     error: Optional[str] = None
     approved: bool = Field(default=False)
-    preferred_url: Optional[str] = Field(default=None)
 
     parent_match: Optional["Match"] = Relationship(back_populates="license")
+
+    @property
+    def preferred_url(self):
+        return self.urls[0] if len(self.urls) > 0 else None
 
     @classmethod
     def extract_page_license_metadata(cls, match, debug=False):

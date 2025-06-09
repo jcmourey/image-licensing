@@ -16,11 +16,11 @@ from typing import Dict, List, Any, Optional, Set, Type, Union
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 # Import the Pydantic models-frontend
-from backend.api.image_rows import ImageRow
+from backend.api.types import ImageRow, MatchRow
 from pydantic import BaseModel
 
 # Path to the TypeScript output file
-TS_OUTPUT_FILE = "../web-ui/src/components/generated-types.ts"
+TS_OUTPUT_FILE = "../web-ui/src/types/generated.ts"
 
 # Mapping of Python types to TypeScript types
 TYPE_MAPPING = {
@@ -86,7 +86,7 @@ def generate_typescript_interface(model_class: Type[BaseModel]) -> str:
 
 def main():
     """Generate TypeScript interfaces from Pydantic models-frontend."""
-    models = [ImageRow]  # Add more models-frontend as needed
+    models = [ImageRow, MatchRow]  # Add more models-frontend as needed
     
     # Generate TypeScript code
     ts_code = [

@@ -12,7 +12,7 @@ from backend.database.repository import DatabaseRepository
 router = APIRouter()
 
 class UsedInData(BaseModel):
-    used_in: str
+    used_in: str | None
 
 # Add debug logging for the update endpoint
 @router.put("/api/image/{image_id}/used_in")
@@ -52,10 +52,10 @@ async def update_used_in(image_id: str, used_in_data: UsedInData):
         if not image:
             raise HTTPException(status_code=404, detail="Image not found")
 
-        image.used_in = used_in_data.used_in
+        image.used_in = used_in_data.used_in.capitalize()
         session.add(image)
 
-        return {"success": True, "used_in": used_in_data.used_in}
+        return {"success": True, "used_in": image.used_in}
 
 @router.get("/api/used_in_options", response_model=List[str])
 async def get_used_in_options():

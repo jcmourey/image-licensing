@@ -15,6 +15,8 @@ class Image(SQLModel, table=True):
     used_in: Optional[str] = Field(default=None)
     selected_match_id: Optional[int] = Field(foreign_key="matches.id", index=True, nullable=True)
     comment: Optional[str] = Field(default=None)
+    replacement_image_url: Optional[str] = Field(default=None)
+    replacement_page_url: Optional[str] = Field(default=None)
 
     # Relationship to matches
     matches: List["Match"] = Relationship(

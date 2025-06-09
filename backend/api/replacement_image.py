@@ -7,16 +7,18 @@ from backend.database.repository import DatabaseRepository
 from backend.model.image import Image
 
 
-class CommentUpdate(BaseModel):
-    comment: str | None
+class ReplacementImageUpdate(BaseModel):
+    replacement_page_url: str | None
+
 
 # Create a separate router for comments to avoid conflicts
 router = APIRouter()
 
-@router.put("/api/image/{image_id:path}/comment", response_model=dict)
-def update_image_comment(image_id: str, comment_data: CommentUpdate):
+
+@router.put("/api/image/{image_id:path}/replacement_page_url", response_model=dict)
+def update_replacement_image(image_id: str, replacement_image_data: ReplacementImageUpdate):
     decoded_image_id = unquote(image_id)
-    
+
     database = DatabaseRepository()
     with database.session_scope() as session:
         statement = select(Image).where(Image.id == decoded_image_id)
@@ -25,10 +27,9 @@ def update_image_comment(image_id: str, comment_data: CommentUpdate):
         if not image:
             raise HTTPException(status_code=404, detail="Image not found")
 
-        new_comment = comment_data.comment
-        image.comment = new_comment if new_comment and new_comment.strip() != "" else None
+        image.replacement_page_url = replacement_image_data.replacement_page_url
         session.add(image)
         session.commit()
 
-        return {"success": True, "comment": comment_data.comment}
+        return {"success": True, "replacement_page_url": image.replacement_page_url}
 

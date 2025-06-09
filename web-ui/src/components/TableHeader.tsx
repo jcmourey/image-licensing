@@ -16,10 +16,11 @@ const columns = [
   { key: "license", label: "Best License", sortable: true },
   { key: "used_in", label: "Used In", sortable: true },
   { key: "comment", label: "Comment", sortable: true },
+  { key: "replacement_page_url", label: "Replacement Image", sortable: true },
 ];
 
 export const TableHeader: React.FC<TableHeaderProps> = ({ onSort, sortConfig }) => (
-  <div className="grid grid-cols-5 bg-gray-100 font-medium">
+  <div className="grid grid-cols-6 bg-gray-100 font-medium">
     {columns.map(col => (
       <div
         key={col.key}

@@ -24,8 +24,7 @@ from backend.update.sync_images import sync_images
 from backend.update.thumbnails import update_thumbnails
 from backend.update.licenses import update_licenses, fix_unique_licenses, sort_license_urls
 from backend.database.repository import DatabaseRepository
-from backend.api import image_rows, comment, used_in, image
-import tldextract
+from backend.api import image_rows, comment, used_in, image, replacement_image, match_rows, select_match
 
 from backend.utilities.url import get_domain
 
@@ -45,6 +44,9 @@ app.include_router(image_rows.router)
 app.include_router(image.router)
 app.include_router(comment.router)
 app.include_router(used_in.router)
+app.include_router(replacement_image.router)
+app.include_router(match_rows.router)
+app.include_router(select_match.router)
 
 @app.get("/")
 async def root():

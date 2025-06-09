@@ -34,16 +34,20 @@
 
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom"
 import ImageRows from "./pages/ImageRows.tsx"
+import TailWindTest from "./components/TailwindTest.tsx"
+import MatchRows from "./components/MatchRows.tsx";
 
 export default function App() {
-  return (
-    <Router>
-      {/* Remove any default styles that might conflict with Tailwind */}
-      <div className="min-h-screen bg-white">
-        <Routes>
-          <Route path="/" element={<ImageRows />} />
-        </Routes>
-      </div>
-    </Router>
-  )
+    return (
+        <Router>
+            {/* Remove any default styles that might conflict with Tailwind */}
+            <div className="min-h-screen bg-white">
+                <Routes>
+                    <Route path="/" element={<ImageRows/>}/>
+                    <Route path="/test" element={<TailWindTest/>}/>
+                    <Route path="/image/:imageId/:selectedMatchId/matches" element={<MatchRows />}/>
+                </Routes>
+            </div>
+        </Router>
+    )
 }

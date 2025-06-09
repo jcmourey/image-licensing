@@ -1,20 +1,34 @@
+from typing import Optional
 from pydantic import BaseModel
-from typing import Optional, List
 
 
-class BaseAPIModel(BaseModel):
+class ImageRow(BaseModel):
     """
-    Base model with a common configuration for API models.
-    All API models that need to be serialized between frontend and backend should inherit from this.
-    """
-    class Config:
-        # Allow conversion between camelCase (JavaScript) and snake_case (Python)
-        alias_generator = lambda string: ''.join(
-            word if i == 0 else word.capitalize() 
-            for i, word in enumerate(string.split('_'))
-        )
-        populate_by_name = True  # Note: validate_by_name is deprecated in newer Pydantic versions
-        json_encoders = {
-            # Add any custom encoders here if needed
-        }
+    Python model for ImageRow that corresponds to the TypeScript interface in the frontend.
 
+    This model is used for serializing/deserializing data between the frontend and backend.
+    """
+    id: str
+    best_match_number: int
+    thumbnail_url: str
+    used_in: Optional[str]
+    best_page_url: str
+    image_url: str
+    license_url: Optional[str]
+    attribution: Optional[str]
+    licensed_by: Optional[str]
+    matching_type: str
+    comment: Optional[str]
+    replacement_page_url: Optional[str]
+    selected_match_id: int
+
+
+class MatchRow(BaseModel):
+  id: int
+  image_url: str
+  page_url: str
+  title: str
+  matching_type: str
+  license_url: Optional[str]
+  attribution: Optional[str]
+  licensed_by: Optional[str]
