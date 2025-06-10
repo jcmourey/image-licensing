@@ -1,9 +1,4 @@
-import type {ImageRow as ImageRowType} from "../types/generated";
 import { useState } from "react";
-
-export type SetImageRows = (
-    value: ImageRowType[] | ((prev: ImageRowType[]) => ImageRowType[])
-) => void;
 
 export type SaveStatus = {
   id: string;

@@ -25,8 +25,10 @@ const Statistics: React.FC<StatisticsProps> = ({ imageRows }) => {
 
         for (const row of imageRows) {
             // Attribution (License type or explanation string)
-            const attr = row.attribution || "Unknown";
-            const lic = row.license_url || null;
+            const match = row.selected_match || row.best_match;
+            if (match == null) { continue; }
+            const attr = match.attribution || "Unknown";
+            const lic = match.license_url || null;
 
             if (!(attr in attributions)) {
                 attributions[attr] = {license_url: lic, count: 1};

@@ -8,7 +8,7 @@ const MatchRows: React.FC = () => {
     const {imageId, selectedMatchId} = useParams();
     const [matchRows, setMatchRows] = useState<MatchRow[]>([]);
     const [loading, setLoading] = useState(true);
-    const [selectedMatchIdNumber, seetSelectedMatchIdNumber] = useState(selectedMatchId ? parseInt(selectedMatchId, 10) : null);
+    const [selectedMatchIdNumber, setSelectedMatchIdNumber] = useState(selectedMatchId ? parseInt(selectedMatchId, 10) : null);
 
     const fetchMatchRows = () => {
         fetch(`/api/image/${imageId}/match_rows`)
@@ -46,7 +46,7 @@ const MatchRows: React.FC = () => {
             if (!response.ok) {
                 throw new Error(`Request failed: ${response.statusText}`);
             }
-            seetSelectedMatchIdNumber(matchId);
+            setSelectedMatchIdNumber(matchId);
         } catch (err) {
             console.error(`Failed to post selected_match_id ${matchId} for image: ${imageId}`, err);
         }
@@ -58,27 +58,16 @@ const MatchRows: React.FC = () => {
 
 
     return (
-
         <div className="max-w-5xl mx-auto py-12 px-4 bg-white shadow-md rounded-lg mt-10">
-            <h1 className="text-3xl font-bold mb-10 text-gray-800 ml-2">Matches for image</h1>
+            <h1 className="text-3xl font-bold mb-10 text-gray-800 ml-2">{matchRows.length} matches for image</h1>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {matchRows.map((match, idx) => (
-                    <div
-                        key={match.id}
-                        className={`
-                            relative border p-4 rounded 
-                            ${match.id === selectedMatchIdNumber ? 'border-green-500' : 'border-gray-300'}
-                            hover:border-blue-400 hover:bg-blue-50 transition-colors
-                        `}
-                        onClick={() => postSelectedMatchId(match.id)}
-                        style={{cursor: "pointer"}}
-                    >
-                        {/* Overlay index */}
-                        <span className="absolute top-2 left-2 bg-gray-800 text-white text-xs font-bold px-2 py-1 rounded shadow z-10">
-                          {idx + 1}
-                        </span>
-
+                {matchRows.map(match => (
+                    <div className={`
+                        relative border-2 p-4 rounded
+                        ${match.id === selectedMatchIdNumber ? 'border-green-500' : 'border-gray-300'}
+                        hover:border-blue-400 hover:bg-blue-50 transition-colors
+                    `}>
                         {match.id === selectedMatchIdNumber && (
                             <div className="absolute top-2 right-2 bg-white rounded-full p-1 shadow">
                                 {/* SVG Checkmark */}
@@ -88,18 +77,34 @@ const MatchRows: React.FC = () => {
                                 </svg>
                             </div>
                         )}
-                        <MatchCell
-                            imageId={null}
-                            selectedMatchId={selectedMatchIdNumber}
-                            imageUrl={match.image_url}
-                            pageUrl={match.page_url}
-                            matchingType={match.matching_type}
-                        />
-                        <AttributionCell
-                            attribution={match.attribution}
-                            licenseUrl={match.license_url}
-                            licensed_by={match.licensed_by}
-                        />
+
+                        <div className="flex items-center gap-1 mb-1">
+                            <span className="text-xs font-medium text-gray-500 inline-block px-2 py-1 bg-gray-100 rounded">
+                                {match.matching_type}
+                            </span>{match.page_url === match.image_url && (
+                                <span className="text-xs font-medium text-yellow-700 inline-block px-2 py-1 bg-yellow-100 rounded">
+                                    No webpage
+                                </span>
+                            )}
+                        </div>
+                        <div
+                            key={match.id}
+                            onClick={() => postSelectedMatchId(match.id)}
+                            className={`
+                                
+                            `}
+                            style={{cursor: "pointer"}}
+                        >
+                            <MatchCell
+                                imageId={null}
+                                match={match}
+                            />
+                            <AttributionCell
+                                attribution={match.attribution}
+                                licenseUrl={match.license_url}
+                                licensed_by={match.licensed_by}
+                            />
+                        </div>
                     </div>
                 ))}
             </div>

@@ -2,11 +2,14 @@ from backend.google_apis.sheet import image_link
 from typing import List, Optional
 from sqlmodel import SQLModel, Field, Relationship
 from .match import Match
+from .sort import match_sort_key
+
 
 class Image(SQLModel, table=True):
     __tablename__ = "images"
 
     id: str = Field(primary_key=True)
+    number: int = Field(nullable=False, unique=True)
     name: str = Field()
     bucket_name: str = Field()
     web_entities_requested: Optional[int] = Field(default=None)
@@ -15,7 +18,6 @@ class Image(SQLModel, table=True):
     used_in: Optional[str] = Field(default=None)
     selected_match_id: Optional[int] = Field(foreign_key="matches.id", index=True, nullable=True)
     comment: Optional[str] = Field(default=None)
-    replacement_image_url: Optional[str] = Field(default=None)
     replacement_page_url: Optional[str] = Field(default=None)
 
     # Relationship to matches
@@ -45,11 +47,28 @@ class Image(SQLModel, table=True):
         return len(self.matches) + search_config.result_increment
 
     @property
-    def sorted_matches(self):
-        return sorted(self.matches, key=lambda m: m.sort_key)
-
-    @property
     def sheet_cell_representation(self):
         return image_link(self.thumbnail_url)
 
+    @property
+    def sorted_matches(self):
+        return sorted(self.matches, key=match_sort_key)
+
+    @property
+    def best_match(self):
+        m = self.sorted_matches
+        return m[0] if len( m) > 0 else None
+
+    @property
+    def selected_match(self):
+        if self.selected_match_id is None:
+            return None
+        for match in self.matches:
+            if match.id == self.selected_match_id:
+                return match
+        return None
+
+    @property
+    def selected_match_or_best(self):
+        return self.selected_match or self.best_match
 

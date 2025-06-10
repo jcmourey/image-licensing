@@ -55,6 +55,3 @@ def get_images_and_match_count(session, max_search_results: int):
     )
 
     return session.exec(stmt).all()
-
-# def pick_selected_matches(database):
-#     with database.session_scope() as session:

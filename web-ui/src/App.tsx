@@ -45,7 +45,7 @@ export default function App() {
                 <Routes>
                     <Route path="/" element={<ImageRows/>}/>
                     <Route path="/test" element={<TailWindTest/>}/>
-                    <Route path="/image/:imageId/:selectedMatchId/matches" element={<MatchRows />}/>
+                    <Route path="/image/:imageId/matches" element={<MatchRows />}/>
                 </Routes>
             </div>
         </Router>

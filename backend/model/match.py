@@ -3,6 +3,8 @@ from typing import Optional, TYPE_CHECKING
 from sqlalchemy import UniqueConstraint
 from sqlmodel import SQLModel, Field, Relationship
 from .license import License
+from .sort import attribution_explanation
+from ..utilities.url import get_domain_without_suffix
 
 if TYPE_CHECKING:
     from .image import Image
@@ -29,5 +31,13 @@ class Match(SQLModel, table=True):
     )
 
     @property
-    def sort_key(self):
-        return self.license.sort_key
+    def preferred_license_url(self):
+        return self.license.preferred_url if self.license else None
+
+    @property
+    def attribution(self):
+        return attribution_explanation(self.preferred_license_url, self.page_url)
+
+    @property
+    def licensed_by(self):
+        return get_domain_without_suffix(self.preferred_license_url)

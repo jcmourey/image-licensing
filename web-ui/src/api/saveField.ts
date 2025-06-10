@@ -1,10 +1,10 @@
-import type { SetImageRows, SaveStatus } from "../types/shared.ts";
+import type { SaveStatus } from "../types/shared.ts";
 
 const saveField = async (
     id: string,
     fieldName: string,
     fieldValue: string | null,
-    onChange: SetImageRows,
+    onChange: (id: string) => void,
     setSaveStatus: (saveStatus: SaveStatus) => void
 ) => {
     setSaveStatus({id, status: 'saving', error: null});
@@ -37,18 +37,8 @@ const saveField = async (
         }
 
         if (response.ok) {
-            // Update the imageRows state with the new value
-            onChange(prev =>
-                prev.map(row =>
-                    row.id === id
-                        ? {
-                            ...row,
-                            [fieldName]: valueToSend
-                        }
-                        : row
-                )
-            );
-
+            // Notify of the change
+            onChange(id);
 
             // Set success status
             setSaveStatus({id, status: 'success', error: null});

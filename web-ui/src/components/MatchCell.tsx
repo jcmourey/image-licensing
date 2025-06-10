@@ -2,62 +2,56 @@ import React, {useState} from 'react';
 import { getDomain } from "../utils/string";
 import {Link} from "react-router-dom";
 import ImagePopup from "./ImagePopup.tsx";
+import type {MatchRow} from "../types/generated.ts";
 
 interface MatchCellProps {
     imageId: string | null;
-    selectedMatchId: number | null;
-    imageUrl: string;
-    pageUrl: string;
-    matchingType: string;
+    match: MatchRow;
 }
 
 const MatchCell: React.FC<MatchCellProps> = (
     {
         imageId,
-        selectedMatchId,
-        imageUrl,
-        pageUrl,
-        matchingType,
+        match,
     }) => {
     const [popupImage, setPopupImage] = useState<string | null>(null);
 
-    if (!imageUrl || !pageUrl) {
+    if (!match.image_url || !match.page_url) {
         return <span>No match found</span>;
     }
 
+
     return (
-        <div className="flex flex-col items-center text-center">
+        <div className="relative flex flex-col items-center text-center h-full justify-center">
             {popupImage && <ImagePopup imageUrl={popupImage} alt="Full size image"/>}
 
-            <div className="flex items-center gap-1 mb-1">
-                    <span className="text-xs font-medium text-gray-500 inline-block px-2 py-1 bg-gray-100 rounded">
-                        {matchingType}
-                    </span>{pageUrl === imageUrl && (
-                <span className="text-xs font-medium text-yellow-700 inline-block px-2 py-1 bg-yellow-100 rounded">
-                            No webpage
-                    </span>
-            )}
+            {/* Rank */}
+            <span className="absolute top-2 left-2 bg-gray-800 text-white text-xs font-bold px-2 py-1 rounded shadow z-10">
+              {match.rank}
+            </span>
+
+            <div className="flex flex-col justify-center items-center flex-1">
+                <img
+                    src={match.image_url}
+                    alt="Matched Image"
+                    className="w-40 h-40 object-cover rounded cursor-zoom-in"
+                    onMouseEnter={() => setPopupImage(match.image_url)}
+                    onMouseLeave={() => setPopupImage(null)}
+                />
             </div>
-            <img
-                src={imageUrl}
-                alt="Matched Image"
-                className="w-40 h-25 object-cover rounded cursor-zoom-in"
-                onMouseEnter={() => setPopupImage(imageUrl)}
-                onMouseLeave={() => setPopupImage(null)}
-            />
 
             <a
-                href={pageUrl}
+                href={match.page_url}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-blue-600 hover:underline mt-2"
             >
-                {getDomain(pageUrl)}
+                {getDomain(match.page_url)}
             </a>
 
-            {imageId && selectedMatchId && (
+            {imageId && (
                 <Link
-                    to={`/image/${encodeURIComponent(imageId)}/${selectedMatchId}/matches`}
+                    to={`/image/${encodeURIComponent(imageId)}/matches`}
                     className="text-sm text-blue-500 mt-1 italic hover:text-blue-700"
                     target="_blank" // <-- Opens new browser tab/window
                     rel="noopener noreferrer"

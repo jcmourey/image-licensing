@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
-import type { ImageRow as ImageRowType } from '../types/generated';
-import { config } from '../config';
-import ImageRow from '../components/ImageRow';
+import {useEffect, useState} from 'react';
+import type {ImageRow} from '../types/generated';
+import {config} from '../config';
+import ImageRowView from '../components/ImageRowView.tsx';
 import TableHeader from '../components/TableHeader';
 import Statistics from '../components/Statistics';
 import TailwindTest from "../components/TailwindTest.tsx";
@@ -38,34 +38,24 @@ export const ImageRows = () => {
     column: "selected_match", // default: backend order
     direction: "asc",
   });
-  const [imageRows, setImageRows] = useState<ImageRowType[]>([]);
+  const [imageRows, setImageRows] = useState<ImageRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  function sortRows(rows: ImageRowType[], config: typeof sortConfig) {
+  function sortRows(rows: ImageRow[], config: typeof sortConfig) {
     const {column, direction} = config;
-    let sorted: ImageRowType[];
 
-    if (column === "selected_match" || column === "license") {
-      sorted = [...rows].sort((a, b) => {
-        const x = a.best_match_number;
-        const y = b.best_match_number;
+    return [...rows].sort((a, b) => {
+      const x = a[column as keyof ImageRow] ?? "";
+      const y = b[column as keyof ImageRow] ?? "";
+      if (typeof x === "string" && typeof y === "string") {
+        return direction === "asc" ? x.localeCompare(y) : y.localeCompare(x);
+      } else if (typeof x === "number" && typeof y === "number") {
         return direction === "asc" ? x - y : y - x;
-      });
-    } else {
-      sorted = [...rows].sort((a, b) => {
-        const x = a[column as keyof ImageRowType] ?? "";
-        const y = b[column as keyof ImageRowType] ?? "";
-        if (typeof x === "string" && typeof y === "string") {
-          return direction === "asc" ? x.localeCompare(y) : y.localeCompare(x);
-        } else if (typeof x === "number" && typeof y === "number") {
-          return direction === "asc" ? x - y : y - x;
-        } else {
-          return 0;
-        }
-      });
-    }
-    return sorted;
+      } else {
+        return 0;
+      }
+    });
   }
 
   function handleSort(column: string) {
@@ -75,6 +65,31 @@ export const ImageRows = () => {
       return {column, direction};
     });
   }
+
+  const handleRowChange = async (id: string) => {
+    try {
+      console.log(`Updating image row with id: ${id}`);
+      const encodedId = encodeURIComponent(id);
+      const response = await fetch(`/api/image/${encodedId}/get`);
+      if (!response.ok) {
+        throw new Error(`Could not fetch image with id: ${id}`);
+      }
+      const updatedRow: ImageRow = await response.json();
+      setImageRows((prevRows) =>
+        prevRows.map(row => {
+          if (row.id == id) {
+            updatedRow.rank = row.rank
+            return updatedRow
+        } else {}
+            return row
+        })
+      );
+    } catch (error) {
+      console.error("Failed to update image row:", error);
+    }
+  };
+
+
 
   useEffect(() => {
     fetchImageRows(setImageRows, setLoading, setError);
@@ -110,9 +125,9 @@ export const ImageRows = () => {
           <TableHeader onSort={handleSort} sortConfig={sortConfig} />
           <div className="divide-y">
             {imageRows.map((row) => (
-                <ImageRow
+                <ImageRowView
                     row={row}
-                    onRowsChange={setImageRows}
+                    onChange={handleRowChange}
                 />
             ))}
           </div>

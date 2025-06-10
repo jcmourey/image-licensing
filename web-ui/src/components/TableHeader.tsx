@@ -11,9 +11,9 @@ interface TableHeaderProps {
 }
 
 const columns = [
-  { key: "image", label: "Image", sortable: false },
-  { key: "selected_match", label: "Best Match", sortable: true },
-  { key: "license", label: "Best License", sortable: true },
+  { key: "number", label: "Image", sortable: true },
+  { key: "rank", label: "Best Match", sortable: true },
+  { key: "rank", label: "Best License", sortable: true },
   { key: "used_in", label: "Used In", sortable: true },
   { key: "comment", label: "Comment", sortable: true },
   { key: "replacement_page_url", label: "Replacement Image", sortable: true },

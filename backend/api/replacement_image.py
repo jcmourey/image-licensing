@@ -25,11 +25,10 @@ def update_replacement_image(image_id: str, replacement_image_data: ReplacementI
         image = session.exec(statement).first()
 
         if not image:
-            raise HTTPException(status_code=404, detail="Image not found")
+            raise HTTPException(status_code=404, detail="replacement_page_url: Image not found")
 
         image.replacement_page_url = replacement_image_data.replacement_page_url
         session.add(image)
-        session.commit()
 
         return {"success": True, "replacement_page_url": image.replacement_page_url}
 

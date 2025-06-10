@@ -2,8 +2,7 @@ from urllib.parse import unquote
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from sqlmodel import select, col
-import base64
+from sqlmodel import select
 from typing import List
 
 from backend.model.image import Image
@@ -50,7 +49,7 @@ async def update_used_in(image_id: str, used_in_data: UsedInData):
         image = session.exec(statement).first()
 
         if not image:
-            raise HTTPException(status_code=404, detail="Image not found")
+            raise HTTPException(status_code=404, detail="used_in: Image not found")
 
         image.used_in = used_in_data.used_in.capitalize()
         session.add(image)
@@ -65,7 +64,7 @@ async def get_used_in_options():
     database = DatabaseRepository()
     with database.session_scope() as session:
         # Get distinct used_in values that are not null
-        statement = select(Image.used_in).where(Image.used_in != None).distinct()
+        statement = select(Image.used_in).where(Image.used_in is not None).distinct()
         results = session.exec(statement).all()
         
         # Filter out None values and sort

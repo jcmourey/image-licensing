@@ -23,11 +23,10 @@ def update_selected_match(image_id: str, selected_match: SelectedMatch):
         image = session.exec(statement).first()
 
         if not image:
-            raise HTTPException(status_code=404, detail="Image not found")
+            raise HTTPException(status_code=404, detail="selected_match_id: Image not found")
 
         image.selected_match_id = selected_match.selected_match_id
         session.add(image)
-        session.commit()
 
         return {"success": True, "selected_match_id": image.selected_match_id}
 

@@ -1,23 +1,23 @@
 import React from 'react';
 import EditableField from './EditableField';
-import {useSaveController, type SaveStatus, type SetImageRows} from '../types/shared';
+import {useSaveController, type SaveStatus} from '../types/shared';
 import saveField from '../api/saveField';
 
 interface CommentSectionProps {
-  id: string;
-  comment: string | null;
-  onRowsChange: SetImageRows;
+    id: string;
+    comment: string | null;
+    onChange: (id: string) => void;
 }
 
 const CommentSection: React.FC<CommentSectionProps> = (
     {
       id,
       comment,
-      onRowsChange,
+      onChange,
     }) => {
 
     const saveMethod = (value: string | null, setSaveStatus: (saveStatus: SaveStatus) => void) => {
-        return saveField(id, "comment", value, onRowsChange, setSaveStatus);
+        return saveField(id, "comment", value, onChange, setSaveStatus);
     };
 
     const {saveStatus, onSave} = useSaveController(saveMethod);

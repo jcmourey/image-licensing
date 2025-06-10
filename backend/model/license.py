@@ -8,7 +8,7 @@ from typing import Optional, TYPE_CHECKING, Dict, List, Any
 from backend.google_apis.sheet import hyperlink
 from backend.html_utils.load import load_html
 from backend.html_utils.metadata import extract_metadata
-from ..licensing.license_types import LICENSES_BY_TYPE, known_license_urls
+from backend.licensing.license_types import known_license_urls
 
 if TYPE_CHECKING:
     from .match import Match

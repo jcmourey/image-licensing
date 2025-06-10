@@ -1,6 +1,5 @@
 import React from 'react';
-import { type ImageRow as ImageRowType } from '../types/generated';
-import type {SetImageRows} from '../types/shared';
+import type { ImageRow } from '../types/generated';
 import ImageCell from './ImageCell';
 import MatchCell from './MatchCell';
 import AttributionCell from './AttributionCell';
@@ -9,46 +8,52 @@ import UsedInSection from './UsedInSection';
 import ReplacementImageCell from "./ReplacementImageCell.tsx";
 
 interface ImageRowProps {
-    row: ImageRowType;
-    onRowsChange: SetImageRows
+    row: ImageRow;
+    onChange: (id: string) => void;
 }
 
-const ImageRow: React.FC<ImageRowProps> = (
+const ImageRowView: React.FC<ImageRowProps> = (
     {
         row,
-        onRowsChange,
+        onChange,
     }) => {
+
+    const match = row.selected_match || row.best_match;
 
     return (
         <div className="grid grid-cols-6 min-h-[150px]">
             {/* Image */}
             <div className="p-3 border-r flex flex-col items-center justify-center h-full">
                 <ImageCell
-                    imageUrl={row.thumbnail_url}
-                    imageId={row.id}
-                    imageNumber={row.best_match_number}
-                    onRowsChange={onRowsChange}
+                    id={row.id}
+                    number={row.number}
+                    url={row.thumbnail_url}
+                    onChange={onChange}
                 />
             </div>
 
             {/* Best Match */}
             <div className="p-3 border-r flex flex-col items-center text-center">
-                <MatchCell
-                    imageId={row.id}
-                    selectedMatchId={row.selected_match_id}
-                    imageUrl={row.image_url}
-                    pageUrl={row.best_page_url}
-                    matchingType={row.matching_type}
-                />
+                {match ? (
+                    <MatchCell
+                        imageId={row.id}
+                        match={match}
+                    />
+                    ) : (
+                    <span className="text-gray-500">No match found</span>
+                )}
             </div>
 
             {/* Attribution */}
             <div className="p-3 border-r flex items-center justify-center h-full overflow-hidden">
-                <AttributionCell
-                    attribution={row.attribution}
-                    licenseUrl={row.license_url}
-                    licensed_by={row.licensed_by}
-                />
+                {match ? (
+                    <AttributionCell
+                        attribution={match.attribution}
+                        licenseUrl={match.license_url}
+                        licensed_by={match.licensed_by}
+                />) : (
+                    <span className="text-gray-500">No match found</span>
+                )}
             </div>
 
             {/* Used In */}
@@ -56,7 +61,7 @@ const ImageRow: React.FC<ImageRowProps> = (
                 <UsedInSection
                     id={row.id}
                     usedIn={row.used_in}
-                    onRowsChange={onRowsChange}
+                    onChange={onChange}
                 />
             </div>
 
@@ -65,7 +70,7 @@ const ImageRow: React.FC<ImageRowProps> = (
                 <CommentSection
                     id={row.id}
                     comment={row.comment}
-                    onRowsChange={onRowsChange}
+                    onChange={onChange}
                 />
             </div>
 
@@ -74,11 +79,11 @@ const ImageRow: React.FC<ImageRowProps> = (
                 <ReplacementImageCell
                     id={row.id}
                     url={row.replacement_page_url}
-                    onRowsChange={onRowsChange}
+                    onChange={onChange}
                 />
             </div>
         </div>
     );
 };
 
-export default ImageRow;
+export default ImageRowView;

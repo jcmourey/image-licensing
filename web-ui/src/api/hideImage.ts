@@ -1,11 +1,9 @@
-import type { SetImageRows } from '../types/shared.ts'; // adjust the path accordingly
-
 const hideImage = async (
-    imageId: string,
-    onChange: SetImageRows
+    id: string,
+    onChange: (id: string) => void
 ) => {
     try {
-        const encodedId = encodeURIComponent(imageId);
+        const encodedId = encodeURIComponent(id);
         const endpoint = `/api/image/${encodedId}/hide`;
         const response = await fetch(endpoint, {
             method: 'POST',
@@ -14,10 +12,10 @@ const hideImage = async (
         if (!response.ok) {
             throw new Error(`Failed to hide image: ${response.statusText}`);
         }
-        onChange(prev => prev.filter(row => row.id !== imageId)); // update the visible rows in state
+        onChange(id); // update the visible rows in state
 
     } catch (err) {
-        console.error(`Failed to hide image: ${imageId}`, err);
+        console.error(`Failed to hide image: ${id}`, err);
     }
 };
 
